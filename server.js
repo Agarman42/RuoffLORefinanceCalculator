@@ -28,4 +28,7 @@ app.post('/grok', async (req, res) => {
 });
 
 const port = process.env.PORT || 3000;
+// Add at bottom of server.js (before app.listen)
+app.use(express.static('.'));  // serves index.html from root
+app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 app.listen(port, () => console.log(`Proxy running on port ${port}`));
