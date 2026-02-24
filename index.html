@@ -1807,7 +1807,7 @@ Full Debt List: ${JSON.stringify(clientData.debts, null, 2)}
 Notes: ${clientData.clientNotes || "None"}`;
 
     // API call
-    const res = await fetch('https://ruofflorefinancecalculator.onrender.com/grok', {   // ← your actual Render URL
+    const res = await fetch('https://ruoff-grok-api.onrender.com/grok', {   // ← your actual Render URL
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -2214,7 +2214,7 @@ Return ONLY:
 Subject: [gripping subject line]
 Body: [full email with **bold** and - bullets]`;
 
-    const res = await fetch('https://ruofflorefinancecalculator.onrender.com/grok', {   // ← your actual Render URL
+    const res = await fetch('https://ruoff-grok-api.onrender.com/grok', {   // ← your actual Render URL
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
