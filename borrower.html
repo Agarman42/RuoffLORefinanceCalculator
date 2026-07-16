@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,22 +9,25 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
   <link rel="stylesheet" href="css/app.css">
 </head>
-<body class="bg-zinc-50 dark:bg-[#0a0f1c] text-zinc-900 dark:text-white min-h-screen pb-28 md:pb-10">
+<body class="mode-guided min-h-screen pb-8 text-zinc-900 dark:text-white">
 
-<header class="bg-gradient-to-r from-[#002B5C] to-[#00A89D] py-4 sticky top-0 z-50 shadow-xl">
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-4">
+<div class="atmosphere" aria-hidden="true"><div class="atmosphere-grid"></div></div>
+<div class="app-shell">
+
+<header class="app-header no-print">
+  <div class="app-header-inner">
     <div>
-      <h1 class="site-title text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-white leading-tight">See if refinancing could help</h1>
-      <p class="text-white/85 text-sm mt-0.5">Ruoff Smart Savings Calculator</p>
+      <p class="eyebrow">Ruoff Smart Savings</p>
+      <h1>See if refinancing could help</h1>
     </div>
     <div class="flex flex-col items-end gap-2">
-      <div class="bg-white px-3 py-2 rounded-2xl shadow-lg">
-        <img src="https://2759433.fs1.hubspotusercontent-na1.net/hubfs/2759433/Ruoff_Mortgage_FC-Jan-18-2026-05-19-19-8281-AM.png" alt="Ruoff Mortgage" class="h-9 sm:h-11">
+      <div class="logo-pill">
+        <img src="https://2759433.fs1.hubspotusercontent-na1.net/hubfs/2759433/Ruoff_Mortgage_FC-Jan-18-2026-05-19-19-8281-AM.png" alt="Ruoff Mortgage">
       </div>
       <div class="flex items-center gap-2 text-white/90 text-xs">
         <span class="opacity-75">Light</span>
         <label class="debt-toggle scale-75 origin-right" title="Toggle color theme">
-          <input type="checkbox" id="theme-toggle" class="sr-only" aria-label="Toggle dark mode">
+          <input type="checkbox" id="theme-toggle" class="sr-only" aria-label="Toggle dark mode" checked>
           <span class="debt-toggle-slider"></span>
         </label>
         <span class="opacity-75">Dark</span>
@@ -34,7 +37,7 @@
 </header>
 
 <nav class="mini-nav no-print" aria-label="Calculator sections">
-  <button type="button" class="mini-nav-btn active" data-nav="home"><i class="fas fa-home"></i>Home</button>
+  <button type="button" class="mini-nav-btn" data-nav="home"><i class="fas fa-home"></i>Home</button>
   <button type="button" class="mini-nav-btn" data-nav="mortgage"><i class="fas fa-file-contract"></i>Mortgage</button>
   <button type="button" class="mini-nav-btn" data-nav="scenario"><i class="fas fa-sliders"></i>Scenario</button>
   <button type="button" class="mini-nav-btn" data-nav="debts"><i class="fas fa-credit-card"></i>Debts</button>
@@ -43,22 +46,30 @@
 
 <div id="toast" class="hidden fixed top-24 left-1/2 -translate-x-1/2 z-[1000] px-6 py-3 rounded-2xl shadow-2xl text-sm font-medium max-w-md text-center" role="status" aria-live="polite"></div>
 
-<main class="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+<main class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+  <div class="mode-bar no-print">
+    <div class="mode-toggle" role="group" aria-label="Experience mode">
+      <button type="button" id="mode-guided" class="active" onclick="RuoffApp.setExperienceMode('guided')">Guided</button>
+      <button type="button" id="mode-expert" onclick="RuoffApp.setExperienceMode('expert')">See everything</button>
+    </div>
+  </div>
+
+  <div id="wizard-rail" class="wizard-rail no-print" aria-label="Progress"></div>
+
   <div id="validation-banner" class="validation-banner hidden" role="status"></div>
 
-  <div id="lo-contact-banner" class="hidden glass rounded-2xl px-5 py-3 flex items-center gap-3 border border-[#00A89D]/30">
+  <div id="lo-contact-banner" class="hidden glass rounded-[1.25rem] px-5 py-3 flex items-center gap-3 border border-[#00A89D]/30">
     <i class="fas fa-user-check text-[#00A89D]"></i>
     <p id="lo-contact-banner-text" class="text-sm font-medium"></p>
   </div>
 
-  <section class="glass rounded-2xl p-5 sm:p-6">
-    <p class="text-sm sm:text-base leading-relaxed opacity-90">
-      Enter a few numbers about your home and mortgage. You’ll see estimated monthly cash-flow change, cash at closing, break-even, and interest vs keeping your current loan — then you can create a personalized plan or contact your loan officer.
-    </p>
-  </section>
-
-  <!-- Contact / goals -->
-  <section class="glass rounded-2xl overflow-hidden">
+  <section class="wizard-panel active-step space-y-6" data-wizard-step="0">
+  <div class="wizard-only wizard-step-card glass glass-hero rounded-[1.75rem] p-6 sm:p-8">
+    <p class="label-caps">Step 1 of 6</p>
+    <h2 class="wizard-title">Let’s personalize this</h2>
+    <p class="wizard-sub">Optional contact details and what matters most — so your plan feels written for you.</p>
+  </div>
+  <section class="glass rounded-[1.75rem] overflow-hidden">
     <button type="button" onclick="RuoffApp.toggleAccordion('client')" class="w-full px-5 sm:px-6 py-4 flex items-center justify-between text-left hover:bg-black/5 dark:hover:bg-white/5">
       <div class="flex items-center gap-3">
         <i class="fas fa-user text-[#00A89D] text-xl"></i>
@@ -99,7 +110,8 @@
   </section>
 
   <!-- Home -->
-  <section id="section-home" class="glass rounded-2xl p-5 sm:p-8">
+  </section><!-- /step 0 -->
+  <section id="section-home" class="wizard-panel glass glass-hero rounded-[1.75rem] p-5 sm:p-8" data-wizard-step="1">
     <div class="flex justify-between items-start mb-4">
       <div>
         <h3 class="text-xl font-bold flex items-center"><span class="step-pill">1</span> Your home’s value</h3>
@@ -111,7 +123,7 @@
       <span class="text-3xl sm:text-4xl font-black">$</span>
       <input id="home-value" type="text" value="450,000" inputmode="numeric" autocomplete="off"
              oninput="RuoffApp.formatHomeValue()" onblur="RuoffApp.formatHomeValueBlur()"
-             class="text-4xl sm:text-5xl font-black bg-transparent focus:outline-none number text-center min-w-[12rem] max-w-full"
+             class="home-value-display bg-transparent focus:outline-none number text-center min-w-[12rem] max-w-full"
              aria-label="Home value">
     </div>
     <input type="range" id="home-slider" min="100000" max="3000000" step="1000" value="450000" oninput="RuoffApp.syncHomeSlider()" class="w-full accent-[#00A89D]">
@@ -139,7 +151,7 @@
   </section>
 
   <!-- Mortgage -->
-  <section id="section-mortgage" class="glass rounded-2xl p-5 sm:p-8">
+  <section id="section-mortgage" class="wizard-panel glass glass-hero rounded-[1.75rem] p-5 sm:p-8" data-wizard-step="2">
     <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
       <h3 class="text-xl font-bold flex items-center"><span class="step-pill">2</span> Current mortgage</h3>
       <button type="button" onclick="RuoffApp.openMortgageModal()" class="px-5 py-2.5 bg-gradient-to-r from-[#00A89D] to-[#00b8a8] text-white rounded-xl text-sm font-semibold shadow">
@@ -168,7 +180,19 @@
   </section>
 
   <!-- Scenario -->
-  <section id="section-scenario" class="glass rounded-2xl p-5 sm:p-8">
+  
+  <section class="wizard-panel wizard-only glass glass-hero rounded-[1.75rem] p-6 sm:p-10" data-wizard-step="3">
+    <p class="label-caps">Step 4 of 6</p>
+    <h2 class="wizard-title">Any other debts?</h2>
+    <p class="wizard-sub">Optional — cards, cars, student loans.</p>
+    <div class="flex flex-col sm:flex-row gap-3 mt-6">
+      <button type="button" onclick="RuoffApp.openDebtsModal()" class="btn-primary flex-1">Add other debts</button>
+      <button type="button" onclick="RuoffApp.wizardNext()" class="btn-ghost flex-1">Skip — continue</button>
+    </div>
+    <div id="debts-summary-strip-wizard" class="debts-summary-strip mt-6"></div>
+  </section>
+
+  <section id="section-scenario" class="wizard-panel glass glass-hero rounded-[1.75rem] p-5 sm:p-8" data-wizard-step="4">
     <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
       <h3 class="text-xl font-bold flex items-center"><span class="step-pill">3</span> Explore a refinance</h3>
       <span class="debts-btn-wrap">
@@ -203,14 +227,22 @@
         <input type="range" id="new-rate-slider" min="2.5" max="10" step="0.125" value="5.875" oninput="RuoffApp.syncNewRateSlider()" class="w-full accent-[#F15A29] mt-2">
       </div>
       <div>
-        <label class="block text-xs opacity-70 mb-1 text-center">New term</label>
-        <select id="new-term" onchange="RuoffApp.liveUpdate()" class="input-field input-lg text-center">
+        <label class="label-caps text-center">New term</label>
+        <div class="segmented" id="term-segmented" role="group" aria-label="Loan term">
+          <button type="button" data-term="10" onclick="RuoffApp.setTerm(10)">10</button>
+          <button type="button" data-term="15" onclick="RuoffApp.setTerm(15)">15</button>
+          <button type="button" data-term="20" onclick="RuoffApp.setTerm(20)">20</button>
+          <button type="button" data-term="25" onclick="RuoffApp.setTerm(25)">25</button>
+          <button type="button" data-term="30" class="active" onclick="RuoffApp.setTerm(30)">30</button>
+        </div>
+        <select id="new-term" onchange="RuoffApp.liveUpdate(); RuoffApp.syncTermSegmented()" class="hidden" aria-hidden="true">
           <option value="10">10 years</option>
           <option value="15">15 years</option>
           <option value="20">20 years</option>
           <option value="25">25 years</option>
           <option value="30" selected>30 years</option>
         </select>
+        <p class="text-xs opacity-50 mt-2 text-center">Years</p>
       </div>
       <div>
         <label class="block text-xs opacity-70 mb-1 text-center">Closing costs (est.)</label>
@@ -276,12 +308,19 @@
     <div id="shorter-term-savings" class="mt-4 glass rounded-2xl p-5 text-center cursor-pointer" role="button" tabindex="0" onclick="RuoffApp.showInterestModal()" onkeydown="if(event.key==='Enter')RuoffApp.showInterestModal()"></div>
   </section>
 
-  <section id="section-plan">
+  <section id="section-plan" class="wizard-panel" data-wizard-step="5">
+    <div class="wizard-only glass glass-hero rounded-[1.75rem] p-6 sm:p-8 mb-6">
+      <p class="label-caps">Step 6 of 6</p>
+      <h2 class="wizard-title">Your snapshot</h2>
+      <p class="wizard-sub">Review the numbers, then create your personalized plan.</p>
+      <div class="flex flex-wrap gap-3 text-sm font-bold">
+        <span class="live-preview-chip mb-0">Cash flow <strong id="plan-cf">—</strong></span>
+        <span class="live-preview-chip mb-0">At closing <strong id="plan-cash">—</strong></span>
+        <span class="live-preview-chip mb-0">Break-even <strong id="plan-be">—</strong></span>
+      </div>
+    </div>
     <button type="button" data-generate-btn onclick="RuoffApp.generateSmartPlan()"
-            class="group w-full py-8 sm:py-10 text-xl sm:text-2xl font-black tracking-tight
-                   bg-gradient-to-r from-[#00A89D] via-[#F15A29] to-[#002B5C]
-                   hover:brightness-110 rounded-2xl shadow-xl text-white
-                   transition-all flex items-center justify-center gap-4 border border-white/20">
+            class="cta-generate">
       <span>Create my personalized plan</span>
       <span class="text-3xl group-hover:rotate-12 transition-transform" aria-hidden="true">✨</span>
     </button>
@@ -307,6 +346,15 @@
   </section>
 </main>
 
+<div class="wizard-footer no-print" id="wizard-footer">
+  <div class="wizard-footer-meta" id="wizard-footer-meta">Step 1 of 6</div>
+  <div class="wizard-footer-actions">
+    <button type="button" class="btn-ghost" id="wizard-back" onclick="RuoffApp.wizardBack()">Back</button>
+    <button type="button" class="btn-primary" id="wizard-next" onclick="RuoffApp.wizardNext()">Continue</button>
+  </div>
+</div>
+
+
 <div class="sticky-results md:hidden px-4 py-3 flex items-center justify-between gap-3 shadow-2xl">
   <div class="text-sm">
     <div class="opacity-60 text-xs">Cash flow</div>
@@ -324,7 +372,7 @@
   Ruoff Mortgage Company, Inc., d/b/a Ruoff Mortgage. Equal Housing Lender. NMLS#141868.
   <a href="http://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/141868" target="_blank" rel="noopener" class="text-[#00A89D] font-medium hover:underline">Licensing</a>
   <p id="app-version" class="mt-6 text-xs font-mono opacity-80 tracking-wide">
-    Ruoff Smart Savings Calculator · Borrower · v2.2.1 · 2026-07-16
+    Ruoff Smart Savings Calculator · Borrower · v3.0.0 · 2026-07-16
   </p>
 </footer>
 
@@ -521,5 +569,6 @@
 <script>window.APP_MODE = 'borrower';</script>
 <script src="js/calculator-core.js"></script>
 <script src="js/app.js"></script>
+</div><!-- /.app-shell -->
 </body>
 </html>

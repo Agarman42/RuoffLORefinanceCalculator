@@ -94,6 +94,26 @@
   let expandedDebtIndex = null; // inline edit in debts list
   let generatingPlan = false;
   let openModalIds = [];
+  let experienceMode = 'guided'; // 'guided' | 'expert'
+  let wizardStep = 0;
+
+  const WIZARD_STEPS = MODE === 'lo'
+    ? [
+        { key: 'setup', label: 'Setup' },
+        { key: 'home', label: 'Home' },
+        { key: 'mortgage', label: 'Mortgage' },
+        { key: 'debts', label: 'Debts' },
+        { key: 'scenario', label: 'Scenario' },
+        { key: 'plan', label: 'Plan' }
+      ]
+    : [
+        { key: 'setup', label: 'You' },
+        { key: 'home', label: 'Home' },
+        { key: 'mortgage', label: 'Mortgage' },
+        { key: 'debts', label: 'Debts' },
+        { key: 'scenario', label: 'Scenario' },
+        { key: 'plan', label: 'Plan' }
+      ];
 
   // ─── Helpers ─────────────────────────────────────────────
   const $ = (id) => document.getElementById(id);
@@ -553,7 +573,118 @@
     updateValidationBanner(scenario);
     updateBrandingChip();
     updateDebtSummaryStrip();
+    updateWizardPreviews(scenario);
+    syncTermSegmented();
     saveToStorage();
+  }
+
+  function updateWizardPreviews(scenario) {
+    if (!scenario) return;
+    setText('wiz-preview-equity', money(scenario.equity));
+    setText('wiz-preview-ltv', scenario.ltv + '%');
+    setText('wiz-preview-housing', money(scenario.oldHousing));
+    setText('wiz-preview-pi', money(scenario.oldPi));
+    setText('plan-before-housing', money(scenario.oldHousing));
+    setText('plan-after-housing', money(scenario.newHousing));
+    const cf = scenario.monthlyCashFlowChange;
+    setText('plan-cf', (cf > 0 ? '+' : '') + money(cf));
+    setText('plan-cash', money(Math.abs(scenario.cashAtClosing)));
+    setText('plan-be', scenario.breakEvenMonths != null ? scenario.breakEvenMonths + ' mo' : 'N/A');
+  }
+
+  // ─── Experience mode + wizard ────────────────────────────
+  function setExperienceMode(mode) {
+    experienceMode = mode === 'expert' ? 'expert' : 'guided';
+    document.body.classList.toggle('mode-guided', experienceMode === 'guided');
+    document.body.classList.toggle('mode-expert', experienceMode === 'expert');
+    const g = $('mode-guided');
+    const e = $('mode-expert');
+    if (g) g.classList.toggle('active', experienceMode === 'guided');
+    if (e) e.classList.toggle('active', experienceMode === 'expert');
+    try { localStorage.setItem('ruoff.experienceMode.' + MODE, experienceMode); } catch (err) {}
+    if (experienceMode === 'guided') {
+      goToWizardStep(wizardStep);
+    } else {
+      document.querySelectorAll('.wizard-panel').forEach(function (p) {
+        p.classList.add('active-step');
+      });
+    }
+  }
+
+  function renderWizardRail() {
+    const rail = $('wizard-rail');
+    if (!rail) return;
+    rail.innerHTML = WIZARD_STEPS.map(function (s, i) {
+      const cls = i < wizardStep ? 'done' : (i === wizardStep ? 'active' : '');
+      const icon = i < wizardStep ? '<i class="fas fa-check"></i>' : String(i + 1);
+      return '<button type="button" class="wizard-rail-step ' + cls + '" data-wiz-goto="' + i + '">' +
+        '<span class="wizard-dot">' + icon + '</span>' +
+        '<span class="wizard-rail-label">' + s.label + '</span></button>';
+    }).join('');
+    rail.querySelectorAll('[data-wiz-goto]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const i = parseInt(btn.getAttribute('data-wiz-goto'), 10);
+        // Allow jump to completed or current+1
+        if (i <= wizardStep + 1) goToWizardStep(i);
+      });
+    });
+  }
+
+  function goToWizardStep(step) {
+    wizardStep = Math.max(0, Math.min(WIZARD_STEPS.length - 1, step));
+    document.querySelectorAll('.wizard-panel').forEach(function (panel) {
+      const s = parseInt(panel.getAttribute('data-wizard-step'), 10);
+      panel.classList.toggle('active-step', s === wizardStep);
+    });
+    renderWizardRail();
+    const meta = $('wizard-footer-meta');
+    if (meta) meta.textContent = 'Step ' + (wizardStep + 1) + ' of ' + WIZARD_STEPS.length + ' · ' + WIZARD_STEPS[wizardStep].label;
+    const back = $('wizard-back');
+    const next = $('wizard-next');
+    if (back) back.style.visibility = wizardStep === 0 ? 'hidden' : 'visible';
+    if (next) {
+      if (wizardStep >= WIZARD_STEPS.length - 1) {
+        next.textContent = 'Generate plan';
+        next.onclick = function () { generateSmartPlan(); };
+      } else {
+        next.textContent = wizardStep === 3 ? 'Continue to scenario' : 'Continue';
+        next.onclick = function () { wizardNext(); };
+      }
+    }
+    // Scroll active panel into view
+    const active = document.querySelector('.wizard-panel.active-step');
+    if (active && experienceMode === 'guided') {
+      setTimeout(function () {
+        active.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+    }
+  }
+
+  function wizardNext() {
+    if (wizardStep >= WIZARD_STEPS.length - 1) {
+      generateSmartPlan();
+      return;
+    }
+    goToWizardStep(wizardStep + 1);
+  }
+
+  function wizardBack() {
+    if (wizardStep <= 0) return;
+    goToWizardStep(wizardStep - 1);
+  }
+
+  function setTerm(years) {
+    state.newTerm = Number(years) || 30;
+    if ($('new-term')) $('new-term').value = String(state.newTerm);
+    syncTermSegmented();
+    liveUpdate();
+  }
+
+  function syncTermSegmented() {
+    const term = String(parseNum($('new-term') && $('new-term').value) || state.newTerm || 30);
+    document.querySelectorAll('#term-segmented [data-term]').forEach(function (btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-term') === term);
+    });
   }
 
   function setText(id, text) {
@@ -739,32 +870,35 @@
         badge.classList.add('hidden');
       }
     }
-    const strip = $('debts-summary-strip');
-    if (!strip) return;
-    if (count === 0) {
-      strip.innerHTML =
-        '<button type="button" class="debts-summary-cta" onclick="RuoffApp.openDebtsModal()">' +
-        '<i class="fas fa-plus-circle"></i> Add credit cards, auto loans, or other debts to model payoff</button>';
-      return;
+    const htmlEmpty =
+      '<button type="button" class="debts-summary-cta" onclick="RuoffApp.openDebtsModal()">' +
+      '<i class="fas fa-plus-circle"></i> Add credit cards, auto loans, or other debts to model payoff</button>';
+    let htmlFilled = '';
+    if (count > 0) {
+      const otherBal = C.otherDebtsPaidOff(state.debts);
+      const otherPay = C.otherDebtMonthlyPayments(state.debts);
+      const sizeNeeded = computeSizeLoanTarget();
+      htmlFilled =
+        '<div class="debts-summary-row">' +
+          '<div><span class="font-semibold">' + selected + ' of ' + count + '</span> other debt' + (count === 1 ? '' : 's') +
+          ' selected to pay off</div>' +
+          '<div class="text-sm opacity-80">' +
+            '<span class="font-bold number pos">' + money(otherPay) + '/mo</span> · ' +
+            '<span class="font-bold number" style="color:var(--ruoff-orange)">' + money(otherBal) + '</span> balances' +
+          '</div>' +
+          '<div class="flex flex-wrap gap-2">' +
+            (selected > 0
+              ? '<button type="button" class="size-loan-btn" onclick="RuoffApp.sizeLoanToCoverDebts()"><i class="fas fa-magic mr-1"></i> Size loan to cover (' + money(sizeNeeded.target) + ')</button>'
+              : '') +
+            '<button type="button" class="text-sm font-semibold text-[var(--ruoff-teal)] hover:underline" onclick="RuoffApp.openDebtsModal()">Edit debts →</button>' +
+          '</div>' +
+        '</div>';
     }
-    const otherBal = C.otherDebtsPaidOff(state.debts);
-    const otherPay = C.otherDebtMonthlyPayments(state.debts);
-    const sizeNeeded = computeSizeLoanTarget();
-    strip.innerHTML =
-      '<div class="debts-summary-row">' +
-        '<div><span class="font-semibold">' + selected + ' of ' + count + '</span> other debt' + (count === 1 ? '' : 's') +
-        ' selected to pay off</div>' +
-        '<div class="text-sm opacity-80">' +
-          '<span class="font-bold number pos">' + money(otherPay) + '/mo</span> · ' +
-          '<span class="font-bold number" style="color:var(--ruoff-orange)">' + money(otherBal) + '</span> balances' +
-        '</div>' +
-        '<div class="flex flex-wrap gap-2">' +
-          (selected > 0
-            ? '<button type="button" class="size-loan-btn" onclick="RuoffApp.sizeLoanToCoverDebts()"><i class="fas fa-magic mr-1"></i> Size loan to cover (' + money(sizeNeeded.target) + ')</button>'
-            : '') +
-          '<button type="button" class="text-sm font-semibold text-[var(--ruoff-teal)] hover:underline" onclick="RuoffApp.openDebtsModal()">Edit debts →</button>' +
-        '</div>' +
-      '</div>';
+    ['debts-summary-strip', 'debts-summary-strip-wizard'].forEach(function (id) {
+      const strip = $(id);
+      if (!strip) return;
+      strip.innerHTML = count === 0 ? htmlEmpty : htmlFilled;
+    });
   }
 
   /** Loan amount needed to pay off mortgage + selected other debts + closing costs (capped by LTV). */
@@ -1949,8 +2083,8 @@
   function initTheme() {
     const toggle = $('theme-toggle');
     const saved = localStorage.getItem(THEME_KEY);
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const dark = saved ? saved === 'dark' : prefersDark;
+    // Dark-first glam default for presentation quality
+    const dark = saved ? saved === 'dark' : true;
     document.documentElement.classList.toggle('dark', dark);
     if (toggle) {
       toggle.checked = dark;
@@ -2008,6 +2142,13 @@
     updateBrandingChip();
     updateDebtSummaryStrip();
     initMiniNav();
+    syncTermSegmented();
+
+    // Experience mode (guided wizard default)
+    let savedMode = 'guided';
+    try { savedMode = localStorage.getItem('ruoff.experienceMode.' + MODE) || 'guided'; } catch (e) {}
+    setExperienceMode(savedMode);
+    goToWizardStep(0);
 
     // Debt form: clear placeholder zeros, Enter to save
     ['new-debt-balance', 'new-debt-pay', 'new-debt-rate', 'new-debt-months'].forEach(function (id) {
@@ -2053,6 +2194,12 @@
     expandDebtInline,
     sizeLoanToCoverDebts,
     scrollToSection,
+    setExperienceMode,
+    wizardNext,
+    wizardBack,
+    goToWizardStep,
+    setTerm,
+    syncTermSegmented,
     clearAllData,
     showCashFlowModal,
     showDebtsPaidModal,
