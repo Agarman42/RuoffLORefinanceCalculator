@@ -839,22 +839,57 @@
   }
 
   // ─── Experience mode + wizard ────────────────────────────
-  function setExperienceMode(mode) {
-    experienceMode = mode === 'expert' ? 'expert' : 'guided';
-    document.body.classList.toggle('mode-guided', experienceMode === 'guided');
-    document.body.classList.toggle('mode-expert', experienceMode === 'expert');
-    const g = $('mode-guided');
-    const e = $('mode-expert');
-    if (g) g.classList.toggle('active', experienceMode === 'guided');
-    if (e) e.classList.toggle('active', experienceMode === 'expert');
+  function setExperienceMode(mode, opts) {
+    const options = opts || {};
+    experienceMode = (mode === 'expert' || mode === 'full') ? 'expert' : 'guided';
+
+    // Hard-set classes (avoid toggle edge cases leaving both/neither)
+    document.body.classList.remove('mode-guided', 'mode-expert');
+    document.body.classList.add(experienceMode === 'expert' ? 'mode-expert' : 'mode-guided');
+
+    // Sync toggle buttons (support id or data-mode)
+    document.querySelectorAll('[data-mode], #mode-guided, #mode-expert').forEach(function (btn) {
+      const btnMode = btn.getAttribute('data-mode')
+        || (btn.id === 'mode-expert' ? 'expert' : btn.id === 'mode-guided' ? 'guided' : '');
+      if (!btnMode) return;
+      const active = (btnMode === 'expert' && experienceMode === 'expert')
+        || (btnMode === 'guided' && experienceMode === 'guided');
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+
     try { localStorage.setItem('ruoff.experienceMode.' + MODE, experienceMode); } catch (err) {}
+
     if (experienceMode === 'guided') {
-      goToWizardStep(wizardStep);
+      goToWizardStep(wizardStep, { silent: !!options.silent });
+      if (!options.silent) toast('Guided tour mode');
     } else {
+      // Show every calculator section
       document.querySelectorAll('.wizard-panel').forEach(function (p) {
         p.classList.add('active-step');
+        p.style.removeProperty('display');
       });
+      // Scroll to top of workspace so the change is obvious
+      if (!options.silent) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        toast('Full workspace — all sections visible');
+      }
     }
+  }
+
+  function wireModeToggle() {
+    const bar = document.querySelector('.mode-bar');
+    if (!bar) return;
+    // Capture-phase so nothing steals the click
+    bar.addEventListener('click', function (e) {
+      const btn = e.target.closest('[data-mode], #mode-guided, #mode-expert');
+      if (!btn || !bar.contains(btn)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const mode = btn.getAttribute('data-mode')
+        || (btn.id === 'mode-expert' ? 'expert' : 'guided');
+      setExperienceMode(mode);
+    }, true);
   }
 
   function renderWizardRail() {
@@ -2500,11 +2535,14 @@
     renderScenarioCompare();
 
     // Experience mode (guided wizard default) + resume step
+    wireModeToggle();
     let savedMode = 'guided';
     try { savedMode = localStorage.getItem('ruoff.experienceMode.' + MODE) || 'guided'; } catch (e) {}
     restoreWizardProgress();
-    setExperienceMode(savedMode);
-    goToWizardStep(wizardStep, { silent: true });
+    setExperienceMode(savedMode, { silent: true });
+    if (experienceMode === 'guided') {
+      goToWizardStep(wizardStep, { silent: true });
+    }
 
     // Resume banner if returning mid-flow
     if (wizardStep > 0 && experienceMode === 'guided') {

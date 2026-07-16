@@ -620,38 +620,75 @@ input[type="range"]::-moz-range-thumb {
 
 /* ── Mode bar + Wizard ──────────────────────────────────── */
 .mode-bar {
+  position: relative;
+  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
   flex-wrap: wrap;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1rem;
+  pointer-events: auto;
 }
 .mode-toggle {
+  position: relative;
+  z-index: 31;
   display: inline-flex;
-  padding: 0.25rem;
+  padding: 0.3rem;
   border-radius: 9999px;
-  background: rgba(0, 43, 92, 0.06);
-  border: 1px solid rgba(0, 168, 157, 0.15);
+  background: rgba(0, 43, 92, 0.08);
+  border: 1px solid rgba(0, 168, 157, 0.2);
+  gap: 0.15rem;
+  pointer-events: auto;
 }
-.dark .mode-toggle { background: rgba(255, 255, 255, 0.05); }
+.dark .mode-toggle { background: rgba(255, 255, 255, 0.06); }
 .mode-toggle button {
-  padding: 0.45rem 0.95rem;
+  position: relative;
+  z-index: 32;
+  padding: 0.55rem 1.05rem;
   border-radius: 9999px;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 700;
   font-family: var(--font);
   color: var(--muted);
   transition: all 0.18s;
+  cursor: pointer;
+  pointer-events: auto;
+  border: none;
+  background: transparent;
+  -webkit-tap-highlight-color: transparent;
+}
+.mode-toggle button:hover {
+  color: var(--text);
+  background: rgba(0, 168, 157, 0.1);
 }
 .mode-toggle button.active {
   background: #fff;
   color: var(--ruoff-navy);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 .dark .mode-toggle button.active {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.14);
   color: #fff;
+}
+.mode-restart {
+  position: relative;
+  z-index: 31;
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-family: var(--font);
+  color: var(--muted);
+  padding: 0.45rem 0.75rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  pointer-events: auto;
+  border: 1px solid transparent;
+  background: transparent;
+}
+.mode-restart:hover {
+  color: var(--text);
+  border-color: rgba(148, 163, 184, 0.35);
+  background: rgba(148, 163, 184, 0.08);
 }
 
 /* Wizard progress rail */
@@ -1613,9 +1650,27 @@ body.mode-guided .wizard-panel[data-wizard-step="0"].active-step {
   flex-direction: column;
   gap: 0.85rem;
 }
+/* Expert / full workspace: show ALL sections, hide guided chrome */
 body.mode-expert .wizard-panel {
   display: block !important;
-  width: 100%;
+  width: 100% !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+body.mode-expert .wizard-rail,
+body.mode-expert .wizard-footer {
+  display: none !important;
+}
+body.mode-expert .mini-nav {
+  display: flex !important;
+}
+body.mode-expert .wizard-only {
+  display: none !important;
+}
+body.mode-expert .sticky-results {
+  display: flex !important;
 }
 /* Full-width glass cards inside guided column — no nested max-width */
 body.mode-guided .wizard-step-card.wizard-only,

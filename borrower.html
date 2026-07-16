@@ -50,10 +50,12 @@
 <main class="app-main py-6 sm:py-8 space-y-6">
   <div class="mode-bar no-print">
     <div class="mode-toggle" role="group" aria-label="Experience mode">
-      <button type="button" id="mode-guided" class="active" onclick="RuoffApp.setExperienceMode('guided')">Guided</button>
-      <button type="button" id="mode-expert" onclick="RuoffApp.setExperienceMode('expert')">See everything</button>
+      <button type="button" id="mode-guided" data-mode="guided" class="active" aria-pressed="true">Guided tour</button>
+      <button type="button" id="mode-expert" data-mode="expert" aria-pressed="false">See everything</button>
     </div>
-    <button type="button" class="text-xs font-semibold opacity-60 hover:opacity-100" onclick="RuoffApp.restartWizard()">Start over</button>
+    <button type="button" class="mode-restart" onclick="RuoffApp.restartWizard()" title="Start guided flow from the beginning">
+      <i class="fas fa-rotate-left"></i> Start over
+    </button>
   </div>
 
   <div id="wizard-rail" class="wizard-rail no-print" aria-label="Progress"></div>
@@ -402,7 +404,7 @@
   Ruoff Mortgage Company, Inc., d/b/a Ruoff Mortgage. Equal Housing Lender. NMLS#141868.
   <a href="http://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/141868" target="_blank" rel="noopener" class="text-[#00A89D] font-medium hover:underline">Licensing</a>
   <p id="app-version" class="mt-6 text-xs font-mono opacity-80 tracking-wide">
-    Ruoff Smart Savings Calculator · Borrower · v3.3.0 · 2026-07-16
+    Ruoff Smart Savings Calculator · Borrower · v3.3.1 · 2026-07-16
   </p>
 </footer>
 

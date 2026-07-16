@@ -77,7 +77,7 @@ app.get('/borrower', (req, res) => {
   res.sendFile(path.join(__dirname, 'borrower.html'));
 });
 
-const APP_VERSION = '3.3.0';
+const APP_VERSION = '3.3.1';
 const APP_RELEASE_DATE = '2026-07-16';
 
 app.get('/health', (req, res) => {
