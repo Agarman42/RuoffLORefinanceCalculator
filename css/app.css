@@ -429,3 +429,197 @@ button[data-generate-btn]:disabled {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Debt entry UX ─────────────────────────────────────── */
+.debts-btn-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.debts-count-badge {
+  position: absolute;
+  top: -0.35rem;
+  right: -0.35rem;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.35rem;
+  border-radius: 9999px;
+  background: #F15A29;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(241, 90, 41, 0.45);
+}
+
+.debts-summary-strip {
+  margin-top: 1rem;
+  border-radius: 1rem;
+  border: 1px dashed rgba(0, 168, 157, 0.35);
+  background: rgba(0, 168, 157, 0.06);
+  padding: 0.85rem 1rem;
+}
+.dark .debts-summary-strip {
+  background: rgba(0, 168, 157, 0.1);
+  border-color: rgba(0, 168, 157, 0.35);
+}
+.debts-summary-cta {
+  width: 100%;
+  text-align: left;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ruoff-teal);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.debts-summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+
+.debt-quick-add {
+  padding: 0.75rem 0.25rem 0.5rem;
+  margin-bottom: 0.25rem;
+}
+.debt-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1.5px solid rgba(0, 168, 157, 0.3);
+  background: rgba(255, 255, 255, 0.5);
+  transition: all 0.15s;
+}
+.dark .debt-type-chip {
+  background: rgba(255, 255, 255, 0.06);
+}
+.debt-type-chip:hover,
+.debt-type-chip.active,
+#add-debt-modal [data-debt-type-chip].active {
+  background: linear-gradient(90deg, var(--ruoff-teal), var(--ruoff-orange));
+  color: white;
+  border-color: transparent;
+}
+
+.debt-row {
+  transition: border-color 0.15s, opacity 0.15s;
+}
+.debt-row-mortgage {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+.dark .debt-row-mortgage {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.debt-row-active {
+  border: 1px solid rgba(0, 168, 157, 0.45);
+  box-shadow: 0 0 0 1px rgba(0, 168, 157, 0.08);
+}
+.debt-row-off {
+  opacity: 0.72;
+  border: 1px solid transparent;
+}
+.debt-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 168, 157, 0.12);
+  color: var(--ruoff-teal);
+  flex-shrink: 0;
+  font-size: 1.1rem;
+}
+.debt-pill {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+}
+.debt-pill-lock {
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+}
+.dark .debt-pill-lock {
+  color: #34d399;
+}
+.debt-include-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  cursor: pointer;
+  user-select: none;
+}
+.debt-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ruoff-teal);
+  background: rgba(0, 168, 157, 0.08);
+  transition: background 0.15s;
+}
+.debt-action-btn:hover {
+  background: rgba(0, 168, 157, 0.18);
+}
+.debt-action-danger {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+.debt-action-danger:hover {
+  background: rgba(239, 68, 68, 0.16);
+}
+
+.debt-empty-state {
+  text-align: center;
+  padding: 1.75rem 1rem 1.25rem;
+  border-radius: 1rem;
+  border: 1px dashed rgba(0, 0, 0, 0.12);
+  margin-top: 0.25rem;
+}
+.dark .debt-empty-state {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.debt-empty-icon {
+  width: 3rem;
+  height: 3rem;
+  margin: 0 auto 0.75rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 168, 157, 0.12);
+  color: var(--ruoff-teal);
+  font-size: 1.25rem;
+}
+
+#debt-type-tip {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  min-height: 1.2em;
+}
+#debt-optional-toggle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ruoff-teal);
+  padding: 0.35rem 0;
+}
+.debt-form-hint {
+  font-size: 0.75rem;
+  opacity: 0.6;
+  margin-top: 0.25rem;
+}

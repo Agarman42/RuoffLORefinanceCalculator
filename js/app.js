@@ -551,6 +551,7 @@
 
     updateValidationBanner(scenario);
     updateBrandingChip();
+    updateDebtSummaryStrip();
     saveToStorage();
   }
 
@@ -695,6 +696,70 @@
   }
 
   // ─── Debts ───────────────────────────────────────────────
+  const DEBT_TYPES = [
+    { key: 'Credit Card', icon: 'fa-credit-card', tip: 'Usually high interest — strong refi candidate' },
+    { key: 'Auto Loan', icon: 'fa-car', tip: 'Balance + monthly payment from your statement' },
+    { key: 'Student Loan', icon: 'fa-graduation-cap', tip: 'Include federal or private loans you may consolidate' },
+    { key: 'Personal Loan', icon: 'fa-hand-holding-dollar', tip: 'Unsecured loans and installment debt' },
+    { key: 'HELOC', icon: 'fa-house-chimney', tip: 'Home equity line — often paid off in cash-out' },
+    { key: 'Other', icon: 'fa-file-invoice-dollar', tip: 'Any other monthly debt obligation' }
+  ];
+
+  function debtIconFor(name) {
+    const n = String(name || '').toLowerCase();
+    if (n.indexOf('mortgage') !== -1) return 'fa-house';
+    if (n.indexOf('card') !== -1 || n.indexOf('visa') !== -1 || n.indexOf('master') !== -1) return 'fa-credit-card';
+    if (n.indexOf('auto') !== -1 || n.indexOf('car') !== -1) return 'fa-car';
+    if (n.indexOf('student') !== -1) return 'fa-graduation-cap';
+    if (n.indexOf('heloc') !== -1 || n.indexOf('equity') !== -1) return 'fa-house-chimney';
+    if (n.indexOf('personal') !== -1) return 'fa-hand-holding-dollar';
+    return 'fa-file-invoice-dollar';
+  }
+
+  function otherDebtsCount() {
+    return state.debts.filter(function (d) { return d.name !== 'Current Mortgage'; }).length;
+  }
+
+  function selectedOtherDebtsCount() {
+    return state.debts.filter(function (d) {
+      return d.name !== 'Current Mortgage' && d.payOff;
+    }).length;
+  }
+
+  function updateDebtSummaryStrip() {
+    const count = otherDebtsCount();
+    const selected = selectedOtherDebtsCount();
+    const badge = $('debts-count-badge');
+    if (badge) {
+      if (count > 0) {
+        badge.classList.remove('hidden');
+        badge.textContent = String(count);
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+    const strip = $('debts-summary-strip');
+    if (!strip) return;
+    if (count === 0) {
+      strip.innerHTML =
+        '<button type="button" class="debts-summary-cta" onclick="RuoffApp.openDebtsModal()">' +
+        '<i class="fas fa-plus-circle"></i> Add credit cards, auto loans, or other debts to model payoff</button>';
+      return;
+    }
+    const otherBal = C.otherDebtsPaidOff(state.debts);
+    const otherPay = C.otherDebtMonthlyPayments(state.debts);
+    strip.innerHTML =
+      '<div class="debts-summary-row">' +
+        '<div><span class="font-semibold">' + selected + ' of ' + count + '</span> other debt' + (count === 1 ? '' : 's') +
+        ' selected to pay off</div>' +
+        '<div class="text-sm opacity-80">' +
+          '<span class="font-bold number pos">' + money(otherPay) + '/mo</span> · ' +
+          '<span class="font-bold number" style="color:var(--ruoff-orange)">' + money(otherBal) + '</span> balances' +
+        '</div>' +
+        '<button type="button" class="text-sm font-semibold text-[var(--ruoff-teal)] hover:underline" onclick="RuoffApp.openDebtsModal()">Edit debts →</button>' +
+      '</div>';
+  }
+
   function openDebtsModal() {
     ensureMortgageDebt();
     renderDebts();
@@ -718,12 +783,33 @@
     container.innerHTML = '';
     let totalMonthly = 0;
     let totalPayoff = 0;
+    let otherCount = 0;
+
+    // Quick-add row at top of list
+    const quick = document.createElement('div');
+    quick.className = 'debt-quick-add';
+    quick.innerHTML =
+      '<div class="text-xs font-semibold opacity-70 mb-2">Quick add</div>' +
+      '<div class="flex flex-wrap gap-2">' +
+      DEBT_TYPES.map(function (t) {
+        return '<button type="button" class="debt-type-chip" data-quick-type="' + escapeHtml(t.key) + '">' +
+          '<i class="fas ' + t.icon + '"></i> ' + escapeHtml(t.key) + '</button>';
+      }).join('') +
+      '</div>';
+    container.appendChild(quick);
+    quick.querySelectorAll('[data-quick-type]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        openAddDebtModal(btn.getAttribute('data-quick-type'));
+      });
+    });
 
     state.debts.forEach((d, i) => {
       if (d.name === 'Current Mortgage') {
         d.payOff = true;
         d.bal = state.currentBalance;
         d.pay = C.derivePi(state.totalPayment, state.taxes, state.insurance, state.pmi, state.escrowIncluded);
+      } else {
+        otherCount++;
       }
       if (d.payOff) {
         totalMonthly += Number(d.pay) || 0;
@@ -732,30 +818,67 @@
 
       const isMortgage = d.name === 'Current Mortgage';
       const row = document.createElement('div');
-      row.className = 'glass rounded-2xl p-5 flex flex-col sm:flex-row gap-4 items-start ' +
-        (isMortgage ? 'opacity-90 border border-zinc-300 dark:border-white/10' : '');
+      row.className = 'debt-row glass rounded-2xl p-4 sm:p-5 ' +
+        (isMortgage ? 'debt-row-mortgage' : (d.payOff ? 'debt-row-active' : 'debt-row-off'));
+
+      const meta = [];
+      if (d.rate) meta.push(d.rate + '% APR');
+      if (d.months) meta.push(d.months + ' mo left');
+      const metaHtml = meta.length
+        ? '<div class="text-xs opacity-60 mt-1">' + escapeHtml(meta.join(' · ')) + '</div>'
+        : (isMortgage ? '' : '<div class="text-xs opacity-50 mt-1">Optional: add rate for better interest savings</div>');
 
       row.innerHTML =
-        '<div class="flex-1 min-w-0 w-full">' +
-          '<div class="text-lg font-semibold">' + escapeHtml(d.name) + '</div>' +
-          '<div class="grid grid-cols-2 gap-4 mt-3">' +
-            '<div><div class="text-xs opacity-60">BALANCE</div><div class="text-xl font-black number">' + money(d.bal) + '</div></div>' +
-            '<div><div class="text-xs opacity-60">MONTHLY</div><div class="text-xl font-black number">' + money(d.pay) + '</div></div>' +
+        '<div class="flex gap-3 items-start">' +
+          '<div class="debt-icon" aria-hidden="true"><i class="fas ' + debtIconFor(d.name) + '"></i></div>' +
+          '<div class="flex-1 min-w-0">' +
+            '<div class="flex flex-wrap items-center gap-2">' +
+              '<div class="text-base sm:text-lg font-semibold truncate">' + escapeHtml(d.name) + '</div>' +
+              (isMortgage ? '<span class="debt-pill debt-pill-lock"><i class="fas fa-lock"></i> Always paid off</span>' : '') +
+            '</div>' +
+            '<div class="grid grid-cols-2 gap-3 mt-2">' +
+              '<div><div class="text-[10px] uppercase tracking-wide opacity-50">Balance</div>' +
+                '<div class="text-lg sm:text-xl font-black number">' + money(d.bal) + '</div></div>' +
+              '<div><div class="text-[10px] uppercase tracking-wide opacity-50">Monthly</div>' +
+                '<div class="text-lg sm:text-xl font-black number">' + money(d.pay) + '</div></div>' +
+            '</div>' +
+            metaHtml +
           '</div>' +
-          (d.rate ? '<div class="text-xs opacity-60 mt-2">' + d.rate + '% interest' + (d.months ? ' · ' + d.months + ' mo left' : '') + '</div>' : '') +
         '</div>' +
-        '<div class="flex sm:flex-col items-center sm:items-end gap-3">' +
+        '<div class="debt-row-actions mt-3 pt-3 border-t border-black/5 dark:border-white/10 flex flex-wrap items-center justify-between gap-3">' +
           (isMortgage
-            ? '<div class="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><i class="fas fa-lock"></i> Always paid off</div>'
-            : '<label class="debt-toggle"><input type="checkbox" data-debt-toggle="' + i + '" ' + (d.payOff ? 'checked' : '') + '><span class="debt-toggle-slider"></span></label>') +
-          (isMortgage
-            ? '<button type="button" class="text-[var(--ruoff-teal)] text-xl px-2" data-edit-mortgage><i class="fas fa-pencil-alt"></i></button>'
-            : '<button type="button" class="text-[var(--ruoff-teal)] text-xl px-2" data-edit-debt="' + i + '"><i class="fas fa-pencil-alt"></i></button>') +
-          (!isMortgage ? '<button type="button" class="text-red-400 text-xl px-2" data-remove-debt="' + i + '"><i class="fas fa-trash"></i></button>' : '') +
+            ? '<button type="button" class="debt-action-btn" data-edit-mortgage><i class="fas fa-pencil-alt"></i> Edit mortgage</button>'
+            : '<label class="debt-include-label">' +
+                '<span class="debt-toggle"><input type="checkbox" data-debt-toggle="' + i + '" ' + (d.payOff ? 'checked' : '') + '>' +
+                '<span class="debt-toggle-slider"></span></span>' +
+                '<span class="text-sm font-medium">' + (d.payOff ? 'Include in refi' : 'Leave as-is') + '</span>' +
+              '</label>') +
+          (!isMortgage
+            ? '<div class="flex items-center gap-1">' +
+                '<button type="button" class="debt-action-btn" data-edit-debt="' + i + '"><i class="fas fa-pencil-alt"></i> Edit</button>' +
+                '<button type="button" class="debt-action-btn debt-action-danger" data-remove-debt="' + i + '"><i class="fas fa-trash"></i></button>' +
+              '</div>'
+            : '') +
         '</div>';
 
       container.appendChild(row);
     });
+
+    // Empty state for other debts
+    if (otherCount === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'debt-empty-state';
+      empty.innerHTML =
+        '<div class="debt-empty-icon"><i class="fas fa-layer-group"></i></div>' +
+        '<h4 class="font-bold text-lg mb-1">No other debts yet</h4>' +
+        '<p class="text-sm opacity-70 mb-4 max-w-sm mx-auto">Add credit cards, auto loans, or student loans to see how paying them off with a refinance changes your monthly cash flow.</p>' +
+        '<button type="button" class="px-5 py-2.5 bg-gradient-to-r from-[#00A89D] to-[#F15A29] text-white rounded-xl text-sm font-bold" data-empty-add>' +
+        '<i class="fas fa-plus mr-1"></i> Add your first debt</button>';
+      container.appendChild(empty);
+      empty.querySelector('[data-empty-add]').addEventListener('click', function () {
+        openAddDebtModal('Credit Card');
+      });
+    }
 
     container.querySelectorAll('[data-debt-toggle]').forEach(el => {
       el.addEventListener('change', () => {
@@ -770,7 +893,9 @@
     });
     container.querySelectorAll('[data-remove-debt]').forEach(el => {
       el.addEventListener('click', () => {
-        removeDebt(parseInt(el.getAttribute('data-remove-debt'), 10));
+        const i = parseInt(el.getAttribute('data-remove-debt'), 10);
+        const name = state.debts[i] && state.debts[i].name;
+        if (confirm('Remove “' + (name || 'this debt') + '”?')) removeDebt(i);
       });
     });
     container.querySelectorAll('[data-edit-mortgage]').forEach(el => {
@@ -779,6 +904,8 @@
 
     setText('modal-total-monthly', money(totalMonthly));
     setText('modal-total-payoff', money(totalPayoff));
+    setText('modal-other-count', String(otherCount));
+    updateDebtSummaryStrip();
   }
 
   function escapeHtml(s) {
@@ -789,69 +916,183 @@
       .replace(/"/g, '&quot;');
   }
 
-  function openAddDebtModal() {
+  function resetAddDebtForm(prefillType) {
+    const type = prefillType || '';
+    if ($('new-debt-type')) $('new-debt-type').value = type;
+    if ($('new-debt-name')) $('new-debt-name').value = type || '';
+    if ($('new-debt-balance')) $('new-debt-balance').value = '';
+    if ($('new-debt-pay')) $('new-debt-pay').value = '';
+    if ($('new-debt-rate')) $('new-debt-rate').value = '';
+    if ($('new-debt-months')) $('new-debt-months').value = '';
+    syncDebtTypeChips(type);
+    const tip = $('debt-type-tip');
+    if (tip) {
+      const found = DEBT_TYPES.find(function (t) { return t.key === type; });
+      tip.textContent = found ? found.tip : 'Pick a type, then enter balance and monthly payment.';
+    }
+    const opt = $('debt-optional-fields');
+    if (opt) opt.classList.add('hidden');
+    const optToggle = $('debt-optional-toggle');
+    if (optToggle) optToggle.setAttribute('aria-expanded', 'false');
+  }
+
+  function syncDebtTypeChips(activeType) {
+    document.querySelectorAll('#add-debt-modal [data-debt-type-chip]').forEach(function (chip) {
+      chip.classList.toggle('active', chip.getAttribute('data-debt-type-chip') === activeType);
+    });
+  }
+
+  function selectDebtType(type) {
+    if ($('new-debt-type')) $('new-debt-type').value = type;
+    const nameEl = $('new-debt-name');
+    if (nameEl) {
+      // Only overwrite name if empty or still a known type label
+      const cur = (nameEl.value || '').trim();
+      const known = DEBT_TYPES.some(function (t) { return t.key === cur; });
+      if (!cur || known) nameEl.value = type;
+    }
+    syncDebtTypeChips(type);
+    const tip = $('debt-type-tip');
+    if (tip) {
+      const found = DEBT_TYPES.find(function (t) { return t.key === type; });
+      tip.textContent = found ? found.tip : '';
+    }
+    if ($('new-debt-balance')) $('new-debt-balance').focus();
+  }
+
+  function toggleDebtOptional() {
+    const opt = $('debt-optional-fields');
+    const btn = $('debt-optional-toggle');
+    if (!opt) return;
+    const open = opt.classList.contains('hidden');
+    opt.classList.toggle('hidden', !open);
+    if (btn) {
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.innerHTML = open
+        ? '<i class="fas fa-chevron-up mr-1"></i> Hide rate &amp; months'
+        : '<i class="fas fa-chevron-down mr-1"></i> Optional: interest rate &amp; months left';
+    }
+  }
+
+  function clearZeroOnFocus(el) {
+    if (!el) return;
+    el.addEventListener('focus', function () {
+      if (el.value === '0' || el.value === '0.0' || el.value === '0.00') el.value = '';
+    });
+  }
+
+  function openAddDebtModal(prefillType) {
+    const title = $('add-debt-title');
     if (editingDebtIndex === undefined) {
-      $('new-debt-name').value = 'New Debt';
-      $('new-debt-balance').value = '0';
-      $('new-debt-pay').value = '0';
-      $('new-debt-rate').value = '0';
-      $('new-debt-months').value = '0';
-      const type = $('new-debt-type');
-      if (type) type.value = '';
+      resetAddDebtForm(prefillType || '');
+      if (title) title.textContent = 'Add a debt';
       const btn = $('add-debt-submit');
-      if (btn) btn.textContent = 'Add Debt';
+      if (btn) btn.textContent = 'Save debt';
+      const btn2 = $('add-debt-submit-another');
+      if (btn2) {
+        btn2.classList.remove('hidden');
+        btn2.textContent = 'Save & add another';
+      }
+    } else {
+      if (title) title.textContent = 'Edit debt';
+      const btn = $('add-debt-submit');
+      if (btn) btn.textContent = 'Save changes';
+      const btn2 = $('add-debt-submit-another');
+      if (btn2) btn2.classList.add('hidden');
     }
     setModalOpen('add-debt-modal', true);
-    setTimeout(() => { if ($('new-debt-name')) $('new-debt-name').focus(); }, 80);
+    setTimeout(function () {
+      const focusEl = $('new-debt-balance') || $('new-debt-name');
+      if (focusEl) focusEl.focus();
+    }, 80);
   }
 
   function closeAddDebtModal() {
     setModalOpen('add-debt-modal', false);
     editingDebtIndex = undefined;
     const btn = $('add-debt-submit');
-    if (btn) btn.textContent = 'Add Debt';
+    if (btn) btn.textContent = 'Save debt';
   }
 
-  function addNewDebt() {
+  function readDebtForm() {
     const type = $('new-debt-type') ? $('new-debt-type').value : '';
-    let name = ($('new-debt-name').value || '').trim() || 'New Debt';
-    if (type && name === 'New Debt') name = type;
-    const bal = parseNum($('new-debt-balance').value);
-    const pay = parseNum($('new-debt-pay').value);
-    const rate = parseNum($('new-debt-rate').value);
-    const months = parseNum($('new-debt-months').value);
+    let name = ($('new-debt-name') && $('new-debt-name').value || '').trim();
+    if (!name) name = type || 'Debt';
+    return {
+      type: type,
+      name: name,
+      bal: parseNum($('new-debt-balance') && $('new-debt-balance').value),
+      pay: parseNum($('new-debt-pay') && $('new-debt-pay').value),
+      rate: parseNum($('new-debt-rate') && $('new-debt-rate').value),
+      months: parseNum($('new-debt-months') && $('new-debt-months').value)
+    };
+  }
 
-    if (bal <= 0 && pay <= 0) {
-      toast('Enter a balance or monthly payment for this debt', 'warn');
-      return;
+  function addNewDebt(andAnother) {
+    const form = readDebtForm();
+    if (form.bal <= 0 && form.pay <= 0) {
+      toast('Enter a balance or monthly payment', 'warn');
+      if ($('new-debt-balance')) $('new-debt-balance').focus();
+      return false;
     }
 
     if (editingDebtIndex !== undefined) {
       const prev = state.debts[editingDebtIndex];
-      state.debts[editingDebtIndex] = { name, bal, pay, rate, months, payOff: prev.payOff !== false };
+      state.debts[editingDebtIndex] = {
+        name: form.name,
+        bal: form.bal,
+        pay: form.pay,
+        rate: form.rate,
+        months: form.months,
+        payOff: prev.payOff !== false,
+        type: form.type || prev.type || ''
+      };
       editingDebtIndex = undefined;
       toast('Debt updated');
+      closeAddDebtModal();
     } else {
-      state.debts.push({ name, bal, pay, rate, months, payOff: true });
-      toast('Debt added');
+      state.debts.push({
+        name: form.name,
+        bal: form.bal,
+        pay: form.pay,
+        rate: form.rate,
+        months: form.months,
+        payOff: true,
+        type: form.type || ''
+      });
+      toast(andAnother ? 'Saved — add the next one' : 'Debt added');
+      if (andAnother) {
+        resetAddDebtForm(form.type || '');
+        setTimeout(function () {
+          if ($('new-debt-balance')) $('new-debt-balance').focus();
+        }, 50);
+      } else {
+        closeAddDebtModal();
+      }
     }
-    closeAddDebtModal();
     renderDebts();
     liveUpdate();
     saveToStorage();
+    return true;
   }
 
   function editDebt(i) {
     const d = state.debts[i];
     if (!d || d.name === 'Current Mortgage') return;
     editingDebtIndex = i;
-    $('new-debt-name').value = d.name || '';
-    $('new-debt-balance').value = d.bal || 0;
-    $('new-debt-pay').value = d.pay || 0;
-    $('new-debt-rate').value = d.rate || 0;
-    $('new-debt-months').value = d.months || 0;
-    const btn = $('add-debt-submit');
-    if (btn) btn.textContent = 'Save Changes';
+    const typeGuess = d.type || (DEBT_TYPES.find(function (t) {
+      return d.name && d.name.indexOf(t.key) === 0;
+    }) || {}).key || '';
+    if ($('new-debt-type')) $('new-debt-type').value = typeGuess;
+    if ($('new-debt-name')) $('new-debt-name').value = d.name || '';
+    if ($('new-debt-balance')) $('new-debt-balance').value = d.bal ? String(d.bal) : '';
+    if ($('new-debt-pay')) $('new-debt-pay').value = d.pay ? String(d.pay) : '';
+    if ($('new-debt-rate')) $('new-debt-rate').value = d.rate ? String(d.rate) : '';
+    if ($('new-debt-months')) $('new-debt-months').value = d.months ? String(d.months) : '';
+    syncDebtTypeChips(typeGuess);
+    if ((d.rate || d.months) && $('debt-optional-fields')) {
+      $('debt-optional-fields').classList.remove('hidden');
+    }
     openAddDebtModal();
   }
 
@@ -860,6 +1101,7 @@
     state.debts.splice(i, 1);
     renderDebts();
     liveUpdate();
+    toast('Debt removed');
   }
 
   function clearAllData() {
@@ -1512,6 +1754,21 @@
     });
 
     updateBrandingChip();
+    updateDebtSummaryStrip();
+
+    // Debt form: clear placeholder zeros, Enter to save
+    ['new-debt-balance', 'new-debt-pay', 'new-debt-rate', 'new-debt-months'].forEach(function (id) {
+      clearZeroOnFocus($(id));
+    });
+    const addDebtModal = $('add-debt-modal');
+    if (addDebtModal) {
+      addDebtModal.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && e.target && e.target.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          addNewDebt(false);
+        }
+      });
+    }
   }
 
   // Public API for onclick handlers
@@ -1528,6 +1785,8 @@
     onNewRateInput,
     applyPreset,
     appendGoalChip,
+    selectDebtType,
+    toggleDebtOptional,
     openMortgageModal,
     closeMortgageModal,
     updateMortgageModal,

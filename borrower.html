@@ -163,18 +163,22 @@
   <section class="glass rounded-2xl p-5 sm:p-8">
     <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
       <h3 class="text-xl font-bold flex items-center"><span class="step-pill">3</span> Explore a refinance</h3>
-      <button type="button" onclick="RuoffApp.openDebtsModal()" class="px-5 py-2.5 bg-gradient-to-r from-[#F15A29] to-[#ff6b3d] text-white rounded-xl text-sm font-semibold shadow">
-        <i class="fas fa-credit-card mr-1"></i> Other debts
-      </button>
+      <span class="debts-btn-wrap">
+        <button type="button" onclick="RuoffApp.openDebtsModal()" class="px-5 py-2.5 bg-gradient-to-r from-[#F15A29] to-[#ff6b3d] text-white rounded-xl text-sm font-semibold shadow">
+          <i class="fas fa-credit-card mr-1"></i> Other debts
+        </button>
+        <span id="debts-count-badge" class="debts-count-badge hidden" aria-label="Other debts count">0</span>
+      </span>
     </div>
 
-    <div class="flex flex-wrap gap-2 mb-6">
+    <div class="flex flex-wrap gap-2 mb-4">
       <button type="button" class="preset-btn" data-preset="rate-term" onclick="RuoffApp.applyPreset('rate-term')">Similar loan, better rate</button>
       <button type="button" class="preset-btn" data-preset="lower-payment" onclick="RuoffApp.applyPreset('lower-payment')">Lower payment</button>
       <button type="button" class="preset-btn" data-preset="shorten-term" onclick="RuoffApp.applyPreset('shorten-term')">Pay off faster</button>
       <button type="button" class="preset-btn" data-preset="debt-wipeout" onclick="RuoffApp.applyPreset('debt-wipeout')">Pay off debts</button>
       <button type="button" class="preset-btn" data-preset="cash-project" onclick="RuoffApp.applyPreset('cash-project')">Cash for a project</button>
     </div>
+    <div id="debts-summary-strip" class="debts-summary-strip"></div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <div>
@@ -312,7 +316,7 @@
   Ruoff Mortgage Company, Inc., d/b/a Ruoff Mortgage. Equal Housing Lender. NMLS#141868.
   <a href="http://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/141868" target="_blank" rel="noopener" class="text-[#00A89D] font-medium hover:underline">Licensing</a>
   <p id="app-version" class="mt-6 text-xs font-mono opacity-80 tracking-wide">
-    Ruoff Smart Savings Calculator · Borrower · v2.0.1 · 2026-07-16
+    Ruoff Smart Savings Calculator · Borrower · v2.1.0 · 2026-07-16
   </p>
 </footer>
 
@@ -379,38 +383,51 @@
 <!-- Debts -->
 <div id="debts-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[400] p-4" onclick="if(event.target===this)RuoffApp.closeDebtsModal()">
   <div class="modal-enter glass max-w-2xl w-full rounded-2xl overflow-hidden flex flex-col max-h-[92vh]" onclick="event.stopPropagation()">
-    <div class="px-6 py-4 border-b border-white/10 flex justify-between items-start gap-3">
+    <div class="px-5 sm:px-6 py-4 border-b border-white/10 flex justify-between items-start gap-3">
       <div>
-        <h3 class="text-xl font-bold">Other debts</h3>
-        <p class="text-sm opacity-70">Include debts you might pay off with a refinance</p>
+        <h3 class="text-xl font-bold">Your other debts</h3>
+        <p class="text-sm opacity-70">Add debts, then choose which ones to pay off with a refinance</p>
       </div>
-      <button type="button" onclick="RuoffApp.closeDebtsModal()" class="text-2xl opacity-60">×</button>
+      <button type="button" onclick="RuoffApp.closeDebtsModal()" class="text-2xl opacity-60" aria-label="Close">×</button>
     </div>
-    <div class="grid grid-cols-2 gap-3 px-6 py-3 border-b border-white/10 text-center">
-      <div><div class="text-xs opacity-60">Monthly payments</div><div id="modal-total-monthly" class="text-xl font-black pos">$0</div></div>
-      <div><div class="text-xs opacity-60">Balances</div><div id="modal-total-payoff" class="text-xl font-black" style="color:#F15A29">$0</div></div>
+    <div class="grid grid-cols-3 gap-2 px-5 sm:px-6 py-3 border-b border-white/10 text-center">
+      <div><div class="text-[10px] uppercase tracking-wide opacity-50">Other debts</div><div id="modal-other-count" class="text-lg font-black">0</div></div>
+      <div><div class="text-[10px] uppercase tracking-wide opacity-50">Monthly selected</div><div id="modal-total-monthly" class="text-lg font-black pos">$0</div></div>
+      <div><div class="text-[10px] uppercase tracking-wide opacity-50">Balances selected</div><div id="modal-total-payoff" class="text-lg font-black" style="color:#F15A29">$0</div></div>
     </div>
     <div id="debts-list" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
-    <div class="p-4 border-t border-white/10 flex flex-wrap gap-2 justify-between">
+    <div class="p-4 border-t border-white/10 flex flex-wrap gap-2 justify-between items-center">
       <button type="button" onclick="RuoffApp.clearAllData()" class="text-red-500 text-sm font-medium">Reset calculator</button>
       <div class="flex gap-2">
-        <button type="button" onclick="RuoffApp.openAddDebtModal()" class="px-4 py-2 bg-gradient-to-r from-[#00A89D] to-[#F15A29] text-white rounded-xl text-sm font-semibold"><i class="fas fa-plus mr-1"></i> Add debt</button>
-        <button type="button" onclick="RuoffApp.closeDebtsModal()" class="px-5 py-2 border border-zinc-300 dark:border-white/20 rounded-xl text-sm font-medium">Done</button>
+        <button type="button" onclick="RuoffApp.openAddDebtModal()" class="px-4 py-2.5 bg-gradient-to-r from-[#00A89D] to-[#F15A29] text-white rounded-xl text-sm font-semibold"><i class="fas fa-plus mr-1"></i> Add debt</button>
+        <button type="button" onclick="RuoffApp.closeDebtsModal()" class="px-5 py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl text-sm font-bold">Done</button>
       </div>
     </div>
   </div>
 </div>
 
 <div id="add-debt-modal" class="hidden fixed inset-0 bg-black/85 flex items-center justify-center z-[600] p-4" onclick="if(event.target===this)RuoffApp.closeAddDebtModal()">
-  <div class="modal-enter glass max-w-lg w-full rounded-2xl overflow-hidden" onclick="event.stopPropagation()">
-    <div class="px-6 py-4 border-b border-white/10 flex justify-between">
-      <h3 class="text-xl font-bold">Add or edit debt</h3>
-      <button type="button" onclick="RuoffApp.closeAddDebtModal()" class="text-2xl opacity-60">×</button>
-    </div>
-    <div class="p-6 space-y-4">
+  <div class="modal-enter glass max-w-lg w-full rounded-2xl overflow-hidden max-h-[92vh] flex flex-col" onclick="event.stopPropagation()">
+    <div class="px-6 py-4 border-b border-white/10 flex justify-between items-center">
       <div>
-        <label class="block text-xs opacity-70 mb-1">Type</label>
-        <select id="new-debt-type" class="input-field">
+        <h3 id="add-debt-title" class="text-xl font-bold">Add a debt</h3>
+        <p class="text-xs opacity-60 mt-0.5">Only balance + monthly payment are required</p>
+      </div>
+      <button type="button" onclick="RuoffApp.closeAddDebtModal()" class="text-2xl opacity-60" aria-label="Close">×</button>
+    </div>
+    <div class="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+      <div>
+        <label class="block text-xs font-semibold opacity-70 mb-2">What kind of debt?</label>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" class="debt-type-chip" data-debt-type-chip="Credit Card" onclick="RuoffApp.selectDebtType('Credit Card')"><i class="fas fa-credit-card"></i> Card</button>
+          <button type="button" class="debt-type-chip" data-debt-type-chip="Auto Loan" onclick="RuoffApp.selectDebtType('Auto Loan')"><i class="fas fa-car"></i> Auto</button>
+          <button type="button" class="debt-type-chip" data-debt-type-chip="Student Loan" onclick="RuoffApp.selectDebtType('Student Loan')"><i class="fas fa-graduation-cap"></i> Student</button>
+          <button type="button" class="debt-type-chip" data-debt-type-chip="Personal Loan" onclick="RuoffApp.selectDebtType('Personal Loan')"><i class="fas fa-hand-holding-dollar"></i> Personal</button>
+          <button type="button" class="debt-type-chip" data-debt-type-chip="HELOC" onclick="RuoffApp.selectDebtType('HELOC')"><i class="fas fa-house-chimney"></i> HELOC</button>
+          <button type="button" class="debt-type-chip" data-debt-type-chip="Other" onclick="RuoffApp.selectDebtType('Other')"><i class="fas fa-file-invoice-dollar"></i> Other</button>
+        </div>
+        <p id="debt-type-tip" class="mt-2">Pick a type, then enter balance and monthly payment.</p>
+        <select id="new-debt-type" class="hidden" aria-hidden="true">
           <option value="">Select…</option>
           <option>Credit Card</option>
           <option>Auto Loan</option>
@@ -421,33 +438,41 @@
         </select>
       </div>
       <div>
-        <label class="block text-xs opacity-70 mb-1">Name</label>
-        <input id="new-debt-name" type="text" class="input-field" value="New Debt">
+        <label class="block text-xs opacity-70 mb-1">Nickname <span class="opacity-50">(optional)</span></label>
+        <input id="new-debt-name" type="text" class="input-field" placeholder="e.g. Chase Sapphire" autocomplete="off">
+        <p class="debt-form-hint">Defaults to the type you picked — rename if you have several</p>
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="block text-xs opacity-70 mb-1">Balance</label>
-          <div class="dollar-wrap"><span class="prefix">$</span><input id="new-debt-balance" type="text" class="input-field" value="0"></div>
+          <label class="block text-xs opacity-70 mb-1">Balance owed</label>
+          <div class="dollar-wrap"><span class="prefix">$</span><input id="new-debt-balance" type="text" inputmode="decimal" class="input-field input-lg" placeholder="0" autocomplete="off"></div>
         </div>
         <div>
           <label class="block text-xs opacity-70 mb-1">Monthly payment</label>
-          <div class="dollar-wrap"><span class="prefix">$</span><input id="new-debt-pay" type="text" class="input-field" value="0"></div>
+          <div class="dollar-wrap"><span class="prefix">$</span><input id="new-debt-pay" type="text" inputmode="decimal" class="input-field input-lg" placeholder="0" autocomplete="off"></div>
         </div>
       </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="block text-xs opacity-70 mb-1">Interest rate %</label>
-          <input id="new-debt-rate" type="number" step="0.1" class="input-field text-center" value="0">
-        </div>
-        <div>
-          <label class="block text-xs opacity-70 mb-1">Months left</label>
-          <input id="new-debt-months" type="number" class="input-field text-center" value="0">
+      <div>
+        <button type="button" id="debt-optional-toggle" onclick="RuoffApp.toggleDebtOptional()" aria-expanded="false">
+          <i class="fas fa-chevron-down mr-1"></i> Optional: interest rate &amp; months left
+        </button>
+        <div id="debt-optional-fields" class="hidden grid grid-cols-2 gap-3 mt-2">
+          <div>
+            <label class="block text-xs opacity-70 mb-1">Interest rate %</label>
+            <input id="new-debt-rate" type="number" step="0.1" class="input-field text-center" placeholder="e.g. 22.9">
+            <p class="debt-form-hint">Improves “interest avoided” math</p>
+          </div>
+          <div>
+            <label class="block text-xs opacity-70 mb-1">Months left</label>
+            <input id="new-debt-months" type="number" class="input-field text-center" placeholder="e.g. 36">
+          </div>
         </div>
       </div>
     </div>
-    <div class="p-4 border-t border-white/10 flex gap-3">
-      <button type="button" onclick="RuoffApp.closeAddDebtModal()" class="flex-1 py-3 border border-zinc-300 dark:border-white/20 rounded-xl font-medium">Cancel</button>
-      <button type="button" id="add-debt-submit" onclick="RuoffApp.addNewDebt()" class="flex-1 py-3 bg-gradient-to-r from-[#00A89D] to-[#F15A29] text-white rounded-xl font-bold">Add Debt</button>
+    <div class="p-4 border-t border-white/10 flex flex-col sm:flex-row gap-2">
+      <button type="button" onclick="RuoffApp.closeAddDebtModal()" class="sm:flex-1 py-3 border border-zinc-300 dark:border-white/20 rounded-xl font-medium">Cancel</button>
+      <button type="button" id="add-debt-submit-another" onclick="RuoffApp.addNewDebt(true)" class="sm:flex-1 py-3 border-2 border-[#00A89D] text-[#00A89D] rounded-xl font-bold">Save &amp; add another</button>
+      <button type="button" id="add-debt-submit" onclick="RuoffApp.addNewDebt(false)" class="sm:flex-1 py-3 bg-gradient-to-r from-[#00A89D] to-[#F15A29] text-white rounded-xl font-bold">Save debt</button>
     </div>
   </div>
 </div>
