@@ -1,0 +1,1964 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ruoff Smart Savings Calculator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/countup.js/2.0.7/countUp.min.js"></script>
+  <script>tailwind.config = { darkMode: 'class' }</script>
+  <style>
+    body { font-family: system-ui, sans-serif; }
+    .glass { background: rgba(255,255,255,0.95); backdrop-filter: blur(24px); border: 1px solid rgba(0,0,0,0.08); }
+    .dark .glass { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.1); }
+    .input-big { background: rgba(255,255,255,0.9); border: 2px solid rgba(0,168,157,0.4); font-size: 1.75rem; font-weight: 700; transition: all 0.3s; padding: 14px 16px; }
+    .dark .input-big { background: rgba(255,255,255,0.12); border-color: rgba(0,168,157,0.5); }
+    .input-big:focus { border-color: #00A89D; box-shadow: 0 0 0 8px rgba(0,168,157,0.3); }
+    .input-big:disabled { background: #f3f4f6; color: #9ca3af; cursor: not-allowed; }
+    .number { font-feature-settings: "tnum"; letter-spacing: -0.04em; }
+    .scenario-pill { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .scenario-pill.active { background: linear-gradient(90deg, #00A89D, #F15A29) !important; color: white; box-shadow: 0 10px 30px rgba(0,168,157,0.4); transform: scale(1.05); }
+    .dollar-input { position: relative; }
+    .dollar-input span { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); font-size: 1.75rem; color: #6b7280; pointer-events: none; }
+    .dollar-input input { padding-left: 54px; text-align: left; }
+    .modal-scroll { max-height: 520px; overflow-y: auto; scrollbar-width: thin; }
+    .modal-scroll::-webkit-scrollbar { width: 6px; }
+    .modal-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+    select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280' stroke-width='3'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E"); background-position: right 1rem center; background-repeat: no-repeat; background-size: 1.4em; padding-right: 3rem; font-size: 1.75rem; }
+    .dark select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23d1d5db' stroke-width='3'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E"); }
+    .dark select option { background: #1f2937; color: white; }
+    .light select option { background: white; color: #111827; }
+    .modal { animation: modalPop 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+    @keyframes modalPop { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    /* ==== MANAGE DEBTS MODAL UPGRADES ==== */
+.debt-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.debt-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px -10px rgba(0, 168, 157, 0.2);
+}
+.debt-toggle {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+}
+.debt-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.debt-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #4b5563;
+  transition: .4s;
+  border-radius: 9999px;
+}
+.debt-toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+.debt-toggle input:checked + .debt-toggle-slider {
+  background: linear-gradient(90deg, #00A89D, #10b981);
+}
+.debt-toggle input:checked + .debt-toggle-slider:before {
+  transform: translateX(24px);
+}
+
+.icon-circle {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  font-size: 1.75rem;
+}
+    /* Print-friendly styles for PDF */
+    @media print {
+      body, .glass, .dark .glass {
+        background: white !important;
+        color: black !important;
+      }
+      .tab-btn {
+        display: none !important;
+      }
+      #tab-content {
+        box-shadow: none !important;
+        border: none !important;
+        padding: 30px !important;
+      }
+      h1, h2, h3 {
+        color: black !important;
+      }
+    }
+    .tab-btn {
+  position: relative;
+  transition: all 0.25s ease;
+}
+
+.tab-btn.active {
+  color: #00A89D;
+  font-weight: 600;
+  border-bottom: 4px solid #00A89D;
+  background-color: rgba(0, 168, 157, 0.08);   /* subtle highlight */
+}
+.copy-btn {
+  background: rgba(255,255,255,0.95);
+  color: #111827;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+.dark .copy-btn {
+  background: rgba(255,255,255,0.12);
+  color: white;
+  border-color: rgba(255,255,255,0.15);
+}
+.copy-btn:hover {
+  background: rgba(255,255,255,1);
+}
+.dark .copy-btn:hover {
+  background: rgba(255,255,255,0.2);
+}
+@media print {
+  .glass, .dark .glass { 
+    background: white !important; 
+    box-shadow: none !important; 
+    border: 1px solid #ddd !important;
+  }
+  body { background: white !important; }
+  button { display: none !important; }
+  #tab-content { padding: 20px !important; }
+}
+#debt-savings-list, #total-debts-list {
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.animate-fadeIn { animation: fadeIn 0.6s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+.animate-pulse-slow { animation: pulse 3s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.85; } }
+
+.border-l-4 { border-left-width: 4px; }
+/* Dark mode fixes for readability */
+.dark .text-zinc-900,
+.dark .text-zinc-800,
+.dark .text-zinc-700,
+.dark .text-zinc-600,
+.dark .text-black {
+  color: #f3f4f6 !important; /* light gray/white for text */
+}
+
+.dark .bg-white,
+.dark .bg-zinc-50,
+.dark .bg-teal-50,
+.dark .bg-orange-50 {
+   color: #f3f4f6 !important;
+}
+
+.dark .border-zinc-200,
+.dark .border-teal-200,
+.dark .border-orange-200 {
+  border-color: #4b5563 !important; /* visible borders */
+}
+
+/* Force Grok-generated content to be readable */
+.dark #tab-content,
+.dark #tab-content * {
+  color: #e5e7eb !important; /* default light text */
+}
+
+.dark #tab-content strong,
+.dark #tab-content b,
+.dark #tab-content h1, .dark #tab-content h2, .dark #tab-content h3 {
+  color: #ffffff !important;
+}
+
+/* Specific to your highlights / savings numbers */
+.dark .text-teal-700,
+.dark .text-teal-600 {
+  color: #34d399 !important; /* brighter teal */
+}
+
+.dark .text-orange-700,
+.dark .text-orange-600 {
+  color: #fb923c !important; /* brighter orange */
+}
+
+/* Ensure buttons/links stay visible */
+.dark a, .dark button {
+  color: #e5e7eb !important; /* default light text */
+}
+  </style>
+</head>
+<body class="bg-zinc-50 dark:bg-[#0a0f1c] text-zinc-900 dark:text-white min-h-screen">
+
+  <!-- HEADER - TALLER + HEADSHOT MOVED TO THE RIGHT OF NAME -->
+<header class="bg-gradient-to-r from-[#002B5C] to-[#00A89D] py-1 sticky top-0 z-50 shadow-2xl">
+  <div class="max-w-7xl mx-auto px-6 flex items-center justify-between">
+    
+    <!-- LEFT: Title + Slogan (tighter spacing) -->
+    <div>
+      <h1 class="text-5xl font-black tracking-[-0.04em] leading-none text-white">Ruoff Smart Savings Calculator</h1>
+      <p class="text-white !text-white opacity-90 text-lg mt-1">The right home begins with the Right Person by your side.</p>
+    </div>
+
+    <!-- RIGHT: Logo on white backdrop + toggle underneath (smaller & tighter) -->
+    <div class="flex flex-col items-end gap-2">
+      <!-- Smaller logo pill -->
+      <div class="bg-white px-6 py-3 rounded-3xl shadow-2xl border border-white/30">
+        <img src="https://2759433.fs1.hubspotusercontent-na1.net/hubfs/2759433/Ruoff_Mortgage_FC-Jan-18-2026-05-19-19-8281-AM.png" 
+             class="h-16">
+      </div>
+
+      <!-- Tiny toggle directly under logo -->
+      <div class="flex items-center gap-2.5 text-white/90 text-sm">
+        <span class="opacity-75">Light</span>
+        <label class="debt-toggle scale-75 origin-right">
+          <input type="checkbox" id="theme-toggle" class="peer sr-only">
+          <span class="debt-toggle-slider bg-white/30 peer-checked:bg-gradient-to-r peer-checked:from-[#00A89D] peer-checked:to-emerald-400"></span>
+          <span class="absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-full transition peer-checked:translate-x-5"></span>
+        </label>
+        <span class="opacity-75">Dark</span>
+      </div>
+    </div>
+
+  </div>
+</header>
+
+  <div class="max-w-7xl mx-auto px-6 py-10 pb-6">
+
+             <!-- CLIENT INFORMATION - EXPANDABLE ACCORDION -->
+    <div class="glass rounded-3xl mb-10 overflow-hidden">
+      <button onclick="toggleClientInfo()" 
+              class="w-full px-8 py-6 flex items-center justify-between text-left hover:bg-white/50 dark:hover:bg-white/10 transition-all">
+        <div class="flex items-center gap-3">
+          <i class="fas fa-user-tie text-[#00A89D] text-2xl"></i>
+          <h2 class="text-2xl font-bold">Your Contact Details and Goals <span class="text-sm font-normal opacity-60">(Optional but Recommended)</span></h2>
+        </div>
+        <i id="client-chevron" class="fas fa-chevron-down text-2xl transition-transform"></i>
+      </button>
+      
+      <div id="client-info-content" class="max-h-0 overflow-hidden transition-all duration-300">
+        <div class="px-8 pb-8 pt-2 grid grid-cols-1 md:grid-cols-12 gap-6">
+          <!-- Name on top, full width -->
+          <div class="md:col-span-12">
+            <label class="block text-sm opacity-75 mb-1">Client Name</label>
+            <input id="client-name" type="text" class="input-big w-full rounded-3xl" placeholder="John & Sarah Smith">
+          </div>
+          <!-- Email + Phone on second row -->
+          <div class="md:col-span-6">
+            <label class="block text-sm opacity-75 mb-1">Email</label>
+            <input id="client-email" type="email" class="input-big w-full rounded-3xl text-base">
+          </div>
+          <div class="md:col-span-6">
+            <label class="block text-sm opacity-75 mb-1">Phone</label>
+            <input id="client-phone" type="tel" class="input-big w-full rounded-3xl text-base">
+          </div>
+          <!-- Notes/Goals - big and tall -->
+          <div class="md:col-span-12">
+            <label class="block text-sm opacity-75 mb-1">Notes / Goals</label>
+            <textarea id="client-notes" class="input-big w-full rounded-3xl h-32 resize-y text-base" placeholder="Wants lower monthly payment, retire in 8 years, open to cash-out..."></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+      <!-- HOME VALUE - NO TEAL LINE + $ RIGHT NEXT TO NUMBER -->
+<div class="glass rounded-3xl p-10 mb-10">
+  <div class="flex justify-between items-start mb-4">
+    <div>
+      <h3 class="text-3xl font-bold flex items-center gap-3"><i class="fas fa-home text-[#00A89D]"></i> Your Home's Value</h3>
+      <p class="text-sm opacity-75 mt-1">(free type or drag slider)</p>
+    </div>
+    <button onclick="showHelpModal('Home Value', 'Estimated current market value of your home.')" class="text-3xl text-[#00A89D]">?</button>
+  </div>
+  
+  <div class="flex justify-center items-baseline gap-0.5">
+    <span class="text-[4.8rem] font-black text-zinc-900 dark:text-white leading-none">$</span>
+    <input id="home-value" type="text" value="738,000" oninput="formatHomeValue()" 
+           class="text-[5.35rem] font-black bg-transparent focus:outline-none number text-center min-w-[320px]">
+  </div>
+
+  <input type="range" id="home-slider" min="100000" max="3000000" step="1000" value="738000" oninput="syncSlider()" class="w-full accent-[#00A89D] mt-10">
+  <div class="flex justify-between text-sm mt-4 opacity-75">
+    <span>$100k</span><span id="home-display">$738,000</span><span>$3M</span>
+  </div>
+              <div class="mt-10 grid grid-cols-2 gap-12 text-center">
+        <div><div class="text-3xl font-semibold opacity-80">Current Equity</div><div id="equity" class="text-[clamp(2.4rem,8vw,4.5rem)] font-bold text-[#00A89D] number">$331,000</div></div>
+        <div><div class="text-3xl font-semibold opacity-80">Current LTV</div><div id="ltv" class="text-[clamp(2.4rem,8vw,4.5rem)] font-bold">49%</div></div>
+      </div>
+</div>
+
+<!-- CURRENT SITUATION SUMMARY -->
+    <div class="glass rounded-3xl p-10 mb-12">
+            <div class="flex justify-between items-center mb-8">
+        <div class="flex items-center gap-3">
+          <i class="fas fa-home text-[#00A89D] text-3xl"></i>
+          <h3 class="text-3xl font-bold">Current Mortgage</h3>
+        </div>
+        <button onclick="openMortgageModal()" 
+                class="px-8 py-3.5 bg-gradient-to-r from-[#00A89D] to-[#00b8a8] hover:brightness-110 text-white rounded-3xl text-base font-medium flex items-center gap-2 shadow-lg transition-all">
+          <i class="fas fa-edit"></i> EDIT MORTGAGE
+        </button>
+      </div>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 text-center">
+        <div><div class="text-sm opacity-75">Balance</div><div id="summary-balance" class="text-4xl font-black number">$320,000</div></div>
+        <div><div class="text-sm opacity-75">Total Housing Obligation</div><div id="summary-total-pay" class="text-4xl font-black text-[#00A89D] number">$2,100</div></div>
+        <div><div class="text-sm opacity-75">Est. P&I</div><div id="summary-pi" class="text-4xl font-black number">$1,637</div></div>
+        <div><div class="text-sm opacity-75">Taxes + Ins + PMI</div><div id="summary-escrow" class="text-4xl font-black number">$450</div></div>
+      </div>
+    </div>
+   <!-- NEW REFI SCENARIO - FULL REPLACEMENT BLOCK -->
+<div class="glass rounded-3xl p-10 mb-10">
+          <div class="flex justify-between items-center mb-8">
+        <div class="flex items-center gap-3">
+          <i class="fas fa-arrow-right text-[#F15A29] text-3xl"></i>
+          <h3 class="text-3xl font-bold">New Refi Scenario</h3>
+        </div>
+        
+        <div class="flex items-center gap-3">
+          <button onclick="openDebtsModal()" 
+                  class="px-8 py-3.5 bg-gradient-to-r from-[#F15A29] to-[#ff6b3d] hover:brightness-110 text-white rounded-3xl text-base font-medium flex items-center gap-2 shadow-lg transition-all">
+            <i class="fas fa-credit-card"></i> MANAGE DEBTS
+          </button>
+          </div>
+      </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+   <div>
+  <label class="block text-sm opacity-75 mb-2 text-center">New Loan Amount</label>
+  <div class="dollar-input"><span>$</span><input id="new-loan-amt" type="number" value="370000" oninput="liveUpdate()" class="input-big w-full rounded-3xl"></div>
+  <input type="range" id="new-loan-slider" min="100000" max="2000000" step="1000" value="370000" oninput="syncNewLoanSlider()" class="w-full accent-[#F15A29] mt-4">
+  
+  <!-- Beautiful dynamic warning -->
+  <div id="loan-limit-warning" class="hidden mt-3 text-amber-600 dark:text-amber-400 text-sm flex items-center gap-2 bg-amber-50 dark:bg-amber-900/30 px-4 py-2.5 rounded-2xl">
+    <i class="fas fa-info-circle"></i>
+    <span id="warning-text">Cash-out refinances are limited to 80% LTV</span>
+  </div>
+</div>
+    
+    <div>
+      <label class="block text-sm opacity-75 mb-2 text-center">New Rate (%)</label>
+      <input id="new-rate" type="number" step="0.125" value="5.875" oninput="liveUpdate()" class="input-big w-full rounded-3xl text-center">
+      <input type="range" id="new-rate-slider" min="3" max="8" step="0.125" value="5.875" oninput="syncNewRateSlider()" class="w-full accent-[#F15A29] mt-4">
+    </div>
+    <div>
+      <label class="block text-sm opacity-75 mb-2 text-center">New Term (years)</label>
+      <select id="new-term" onchange="liveUpdate()" class="input-big w-full rounded-3xl text-center">
+        <option value="10">10 years</option>
+        <option value="15">15 years</option>
+        <option value="20">20 years</option>
+        <option value="25">25 years</option>
+        <option value="30" selected>30 years</option>
+      </select>
+    </div>
+  </div>
+
+    <!-- THREE NEW CLICKABLE BOXES - BIG & BEAUTIFUL -->
+    <!-- THREE NEW CLICKABLE BOXES - BIG & BEAUTIFUL -->
+  <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+    <div onclick="showDebtSavingsModal()" class="glass rounded-3xl p-12 cursor-pointer hover:scale-[1.02] transition-all border border-transparent hover:border-[#00A89D]">
+      <div class="text-sm opacity-75 mb-3">Monthly Savings from Debts</div>
+      <div id="debt-monthly-savings" class="text-6xl font-black text-[#00A89D] number">$0</div>
+    </div>
+    <div onclick="showTotalDebtsModal()" class="glass rounded-3xl p-12 cursor-pointer hover:scale-[1.02] transition-all border border-transparent hover:border-[#00A89D]">
+      <div class="text-sm opacity-75 mb-3">Total Debts Paid Off</div>
+      <div id="total-debts-paid" class="text-6xl font-black number">$0</div>
+    </div>
+    <div onclick="showCashBackModal()" class="glass rounded-3xl p-12 cursor-pointer hover:scale-[1.02] transition-all border border-transparent hover:border-[#00A89D]">
+      <div class="text-sm opacity-75 mb-3">Cash Back After $6k Closing*</div>
+      <div id="cash-back" class="text-6xl font-black text-[#F15A29] number">$0</div>
+    </div>
+  </div>
+  <div class="text-center text-xs opacity-60 mt-4">* Estimated closing costs and prepaid items</div>
+
+ <!-- LIFETIME INTEREST SAVINGS - COMPACT + SPACED -->
+<div id="lifetime-interest-card" onclick="showLifetimeModal()" 
+     class="mt-8 mb-14 cursor-pointer hover:scale-[1.02] transition-all">
+  <div class="glass rounded-3xl p-6 md:p-8 text-center border border-emerald-400/40 hover:border-emerald-400">
+    <div class="mx-auto w-12 h-12 bg-emerald-400/10 rounded-2xl flex items-center justify-center mb-4">
+      <i class="fas fa-piggy-bank text-3xl text-emerald-400"></i>
+    </div>
+    <div class="text-xs tracking-widest opacity-75 mb-1">LIFETIME INTEREST SAVED</div>
+    <div id="interest-saved-amount" class="text-5xl font-black text-emerald-400 number">$0</div>
+    <div id="interest-subtitle" class="mt-3 text-sm text-emerald-200 font-medium">
+      Adjust your new rate or term length to see how much you could save
+    </div>
+
+    <!-- Visible Button -->
+    <button onclick="event.stopPropagation(); showLifetimeModal()" 
+            class="mt-6 px-8 py-3 text-sm bg-emerald-400/10 hover:bg-emerald-400/20 text-emerald-400 font-medium rounded-2xl border border-emerald-400/30 transition-all">
+      Compare 10 / 15 / 20 / 25 Year Savings →
+    </button>
+  </div>
+</div>
+
+        <!-- RESULTS AREA - GROK POWERED -->
+    <div id="results-area" class="hidden mt-16">
+      <div class="flex justify-between items-center mb-8">
+  <h2 class="text-4xl font-bold">Smart Plan for <span id="results-client-name" class="text-[#00A89D]"></span></h2>
+ <div class="flex gap-4">
+  <button onclick="downloadAsWordDoc()" 
+          class="px-8 py-4 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-3xl font-medium flex items-center gap-2 shadow-lg hover:shadow-xl transition-all">
+    <i class="fas fa-file-word"></i> Download as Word (.doc)
+  </button>
+  
+  <button onclick="copyFormattedPlan()" 
+        class="px-8 py-4 bg-gradient-to-r from-zinc-700 to-zinc-800 hover:from-zinc-600 hover:to-zinc-700 
+               dark:from-white/10 dark:to-white/20 text-white dark:text-white 
+               rounded-3xl font-medium flex items-center gap-2 shadow-lg transition-all">
+  <i class="fas fa-copy"></i> Copy Formatted
+</button>
+  
+  <button onclick="contactMyLO()" class="px-8 py-4 bg-[#00A89D] text-white rounded-3xl font-medium flex items-center gap-2">
+  <i class="fas fa-envelope"></i> Contact My LO
+</button>
+</div>
+</div>
+
+      <div class="flex border-b border-white/20 mb-8 overflow-x-auto">
+  <button onclick="showTab(0)" class="tab-btn active px-8 py-4 font-medium">Summary</button>
+  <button onclick="showTab(1)" class="tab-btn px-8 py-4 font-medium">Scenario Comparison</button>
+  <button onclick="showTab(2)" class="tab-btn px-8 py-4 font-medium">Recommended Plan</button>
+</div>
+
+      <div id="tab-content" class="glass rounded-3xl p-10 min-h-[600px] prose dark:prose-invert max-w-none"></div>
+    </div>
+
+       <!-- SEXY HERO GENERATE BUTTON (the star of the page) -->
+    <div class="mt-12">
+      <button onclick="generateSmartPlan()" 
+              class="group w-full py-16 text-4xl font-black tracking-[-0.03em] 
+                     bg-gradient-to-r from-[#00A89D] via-[#F15A29] to-[#002B5C] 
+                     hover:from-[#00c4b8] hover:via-[#ff6b3d] hover:to-[#003d80]
+                     rounded-3xl shadow-2xl hover:shadow-[0_20px_60px_-15px] hover:shadow-[#00A89D]/60
+                     hover:scale-[1.025] active:scale-[0.98] 
+                     transition-all duration-300 flex items-center justify-center gap-6 border border-white/30">
+        <span>GENERATE PERSONALIZED SMART PLAN FOR THIS CLIENT</span>
+        <span class="text-5xl group-hover:rotate-12 transition-transform">✨</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- COMPLIANCE DISCLAIMER -->
+  <!-- COMPLIANCE DISCLAIMER -->
+<div class="max-w-7xl mx-auto px-6 py-12 text-center text-base leading-relaxed opacity-75 border-t border-white/10 mt-10">
+    Ruoff Mortgage Company, Inc., d/b/a Ruoff Mortgage, is an Indiana corporation. 
+    For complete licensing information visit 
+    <a href="http://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/141868" 
+       target="_blank" 
+       class="hover:underline text-[#00A89D] font-medium">
+      http://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/141868
+    </a>.<br><br>
+    This is not an offer for extension of credit or a commitment to lend. 
+    All loans must satisfy company underwriting guidelines. Information and interest rate are subject to change at any time and without notice. 
+    Equal Housing Lender. NMLS#141868. 01/28/2026
+  </div>
+
+<!-- CASH BACK MODAL - SLICK BREAKDOWN -->
+<div id="cash-back-modal" onclick="if(event.target === this) closeCashBackModal()" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[500]">
+  <div onclick="event.stopPropagation()" class="modal glass max-w-2xl w-full mx-4 rounded-3xl p-10">
+    <h3 class="text-4xl font-bold mb-8">Cash Back After Closing Costs</h3>
+    
+    <div class="space-y-6 text-2xl">
+      <div class="flex justify-between">
+        <span>New Loan Amount</span>
+        <span id="modal-new-loan" class="font-black">$0</span>
+      </div>
+      <div class="flex justify-between text-base opacity-75">
+        <span>New Monthly Payment</span>
+        <span id="modal-new-payment" class="font-medium">$0</span>
+      </div>
+
+      <div class="flex justify-between pt-4 border-t border-white/20">
+        <span>Current Mortgage Payoff</span>
+        <span id="modal-current-mortgage" class="font-black text-red-400">-$0</span>
+      </div>
+      <div class="flex justify-between text-base opacity-75">
+        <span>Old Mortgage Payment</span>
+        <span id="modal-old-payment" class="font-medium">$0</span>
+      </div>
+
+      <div class="flex justify-between pt-4 border-t border-white/20">
+        <span>Other Debts Being Paid Off</span>
+        <span id="modal-other-debts" class="font-black text-red-400">-$0</span>
+      </div>
+      <div class="flex justify-between text-base opacity-75">
+        <span>Other Monthly Payments</span>
+        <span id="modal-other-monthly" class="font-medium">$0</span>
+      </div>
+
+      <div class="flex justify-between pt-4 border-t border-white/20">
+        <span>Estimated Closing Costs</span>
+        <span class="font-black text-red-400">-$6,000</span>
+      </div>
+
+      <div class="pt-8 border-t border-white/20 flex justify-between text-4xl font-black">
+        <span>Cash You Receive</span>
+        <span id="modal-cash-back-final" class="text-[#F15A29]">$0</span>
+      </div>
+    </div>
+
+    <button onclick="closeCashBackModal()" class="mt-10 w-full py-6 text-xl font-bold bg-gradient-to-r from-[#00A89D] to-[#F15A29] text-white rounded-3xl">Close</button>
+  </div>
+</div>
+  <!-- CURRENT MORTGAGE MODAL -->
+  <div id="mortgage-modal" onclick="if(event.target === this) closeMortgageModal()" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[300]">
+    <div onclick="event.stopPropagation()" class="modal glass max-w-3xl w-full mx-4 rounded-3xl overflow-hidden flex flex-col max-h-[92vh]">
+            <!-- TIGHTER HEADER -->
+      <div class="px-10 pt-8 pb-6 flex-shrink-0 border-b border-white/10">
+        <div class="flex justify-between items-center">
+          <h3 class="text-4xl font-bold tracking-tighter">Current Mortgage & Payment Details</h3>
+          <button onclick="closeMortgageModal()" class="text-4xl text-white/70 hover:text-white">✕</button>
+        </div>
+      </div>
+
+            <div class="flex-1 overflow-y-auto p-8 pt-4 space-y-6">
+        <div class="glass p-8 rounded-3xl">
+          <label class="block text-sm opacity-75 mb-3">Current Mortgage Balance</label>
+          <div class="dollar-input"><span>$</span><input id="modal-balance" type="number" value="320000" oninput="updateMortgageModal()" class="input-big w-full rounded-3xl"></div>
+          <input type="range" id="balance-slider" min="50000" max="2000000" step="1000" value="320000" oninput="syncBalanceSlider()" class="w-full accent-[#00A89D] mt-6">
+        </div>
+
+        <div class="glass p-8 rounded-3xl">
+          <h4 class="text-2xl font-bold mb-6">Loan Details</h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm opacity-75 mb-3">Current Rate (%)</label>
+              <input id="current-rate" type="number" step="0.125" value="6.75" class="input-big w-full rounded-3xl">
+            </div>
+            <div>
+              <label class="block text-sm opacity-75 mb-3">Years Remaining</label>
+              <input id="years-remaining" type="number" value="27" class="input-big w-full rounded-3xl">
+            </div>
+          </div>
+          <div class="mt-6">
+            <label class="block text-sm opacity-75 mb-3">Initial Closing Date</label>
+            <input id="closing-date" type="date" class="input-big w-full rounded-3xl">
+          </div>
+        </div>
+
+        <div class="glass p-10 rounded-3xl">
+          <h4 class="text-3xl font-bold mb-8 flex items-center gap-3"><i class="fas fa-home text-[#00A89D]"></i> Your Monthly Payment</h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <label class="block text-sm opacity-75 mb-3">Total Monthly Payment (to lender)</label>
+              <div class="dollar-input"><span>$</span><input id="total-payment" type="number" value="2087" oninput="updateMortgageModal()" class="input-big w-full rounded-3xl"></div>
+            </div>
+            <div class="flex items-center pt-8">
+              <label class="flex items-center gap-3 text-lg cursor-pointer">
+                <input type="checkbox" id="escrow-included" checked onchange="updateMortgageModal()" class="w-6 h-6 accent-[#00A89D]">
+                Taxes & Insurance are included in this payment
+              </label>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
+            <div>
+              <label class="block text-sm opacity-75 mb-3">Taxes (monthly)</label>
+              <div class="dollar-input"><span>$</span><input id="taxes" type="number" value="450" oninput="updateMortgageModal()" class="input-big w-full rounded-3xl"></div>
+            </div>
+            <div>
+              <label class="block text-sm opacity-75 mb-3">Insurance (monthly)</label>
+              <div class="dollar-input"><span>$</span><input id="insurance" type="number" value="180" oninput="updateMortgageModal()" class="input-big w-full rounded-3xl"></div>
+            </div>
+            <div>
+              <label class="block text-sm opacity-75 mb-3">PMI (monthly)</label>
+              <div class="dollar-input"><span>$</span><input id="pmi" type="number" value="0" oninput="updateMortgageModal()" class="input-big w-full rounded-3xl"></div>
+            </div>
+          </div>
+          <div class="mt-10 pt-8 border-t border-white/20 flex justify-between text-4xl font-black">
+            <span class="opacity-75">Your P&I Portion</span>
+            <span id="modal-pi" class="text-[#00A89D]">$1,637</span>
+          </div>
+          <div class="mt-6 text-right text-xl font-medium text-[#00A89D]">
+            Total Monthly Housing Cost: <span id="modal-total-housing" class="font-black">$2,087</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex border-t border-white/10 flex-shrink-0">
+        <button onclick="closeMortgageModal()" class="flex-1 py-12 text-3xl font-bold bg-gradient-to-r from-[#F15A29] to-orange-500 text-white">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MANAGE YOUR DEBTS MODAL - RESIZABLE + MIDDLE LIST EXPANDS PERFECTLY -->
+<div id="debts-modal" onclick="if(event.target === this) closeDebtsModal()" 
+     class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[500] p-3 md:p-6 lg:p-8">
+  
+  <div onclick="event.stopPropagation()" 
+       class="modal glass w-full max-w-[98vw] md:max-w-[96vw] lg:max-w-[94vw] xl:max-w-[1780px] 
+              mx-auto rounded-3xl overflow-hidden flex flex-col 
+              max-h-[96vh] lg:max-h-[94vh] shadow-2xl border border-white/10
+              resize overflow-hidden min-w-[680px] min-h-[520px]">
+
+        <!-- HEADER - BIG VISIBLE EDIT BUTTON -->
+    <div class="px-8 py-6 border-b border-white/10 flex items-center justify-between bg-white/70 dark:bg-zinc-900/70">
+      <div>
+        <h3 class="text-3xl font-bold">Manage Your Debts</h3>
+        <p class="text-sm opacity-75">Select which debts to pay off with your new refi</p>
+      </div>
+      
+      <div class="flex items-center gap-6">
+        <!-- Big prominent Edit Mortgage Button -->
+        <button onclick="switchToMortgageModal()" 
+                class="px-8 py-4 bg-gradient-to-r from-[#00A89D] to-[#F15A29] hover:brightness-110 text-white rounded-3xl font-medium flex items-center gap-3 shadow-xl transition-all text-lg">
+          <i class="fas fa-edit"></i>
+          Edit Mortgage Details
+        </button>
+        
+        <!-- Close button -->
+        <button onclick="closeDebtsModal()" class="text-4xl leading-none opacity-60 hover:opacity-100">×</button>
+      </div>
+    </div>
+
+    <!-- TOTALS BAR -->
+    <div class="grid grid-cols-2 border-b border-white/10">
+      <div class="bg-emerald-50 dark:bg-emerald-900/30 p-6 text-center">
+        <div class="text-xs tracking-widest opacity-75">TOTAL MONTHLY DEBT</div>
+        <div id="modal-total-monthly" class="text-4xl font-black text-emerald-600">$6,700</div>
+      </div>
+      <div class="bg-orange-50 dark:bg-orange-900/30 p-6 text-center">
+        <div class="text-xs tracking-widest opacity-75">TOTAL TO PAY OFF</div>
+        <div id="modal-total-payoff" class="text-4xl font-black text-orange-600">$355,500</div>
+      </div>
+    </div>
+
+    <!-- DEBT LIST - THIS IS THE MAGIC PART THAT NOW EXPANDS -->
+    <div id="debts-scroll-container" class="flex-1 overflow-y-auto p-6 space-y-4 bg-white/60 dark:bg-zinc-900/60">
+      <div id="debts-list" class="space-y-4">
+        <!-- Debt cards are dynamically inserted here by renderDebts() -->
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="p-6 border-t border-white/10 flex items-center justify-between bg-white/80 dark:bg-zinc-900/80">
+      <button onclick="clearAllData()" class="flex items-center gap-2 text-red-500 hover:text-red-600 text-sm font-medium">
+        <i class="fas fa-trash"></i> Clear All Data
+      </button>
+      <div class="flex items-center gap-4">
+        <button onclick="openAddDebtModal()" 
+                class="px-8 py-3 bg-gradient-to-r from-[#00A89D] to-[#F15A29] text-white rounded-3xl font-medium flex items-center gap-2">
+          <i class="fas fa-plus"></i> Add New Debt
+        </button>
+        <button onclick="closeDebtsModal()" 
+                class="px-10 py-3 border border-zinc-300 dark:border-white/30 hover:bg-white/20 rounded-3xl font-medium">
+          Done
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+<!-- ADD NEW DEBT MODAL - NOW STACKS ON TOP -->
+<!-- ADD NEW DEBT MODAL - CLEAN, MODERN, TITLE TOP + BUTTONS BOTTOM -->
+<div id="add-debt-modal" onclick="if(event.target === this) closeAddDebtModal()" 
+     class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[600] p-4">
+  
+  <div onclick="event.stopPropagation()" 
+       class="modal glass w-full max-w-lg mx-auto rounded-3xl overflow-hidden flex flex-col shadow-2xl">
+
+    <!-- HEADER -->
+    <div class="px-8 py-6 border-b border-white/10 flex items-center justify-between">
+      <h3 class="text-3xl font-bold">Add New or Edit Debt</h3>
+      <button onclick="closeAddDebtModal()" class="text-4xl leading-none opacity-60 hover:opacity-100">×</button>
+    </div>
+
+    <!-- FORM BODY -->
+    <div class="p-8 space-y-6">
+      
+      <div>
+        <label class="block text-sm opacity-75 mb-2">Debt Type</label>
+        <select id="new-debt-type" class="input-big w-full rounded-3xl">
+          <option value="">Select type...</option>
+          <option value="Mortgage">Mortgage</option>
+          <option value="Credit Card">Credit Card</option>
+          <option value="Auto Loan">Auto Loan</option>
+          <option value="Student Loan">Student Loan</option>
+          <option value="Personal Loan">Personal Loan</option>
+          <option value="HELOC">HELOC</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm opacity-75 mb-2">Debt Name</label>
+        <input id="new-debt-name" type="text" value="New Debt" 
+               class="input-big w-full rounded-3xl">
+      </div>
+
+      <div class="grid grid-cols-2 gap-6">
+        <div>
+          <label class="block text-sm opacity-75 mb-2">Balance</label>
+          <div class="dollar-input">
+            <span>$</span>
+            <input id="new-debt-balance" type="text" value="0" 
+                   class="input-big w-full rounded-3xl">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm opacity-75 mb-2">Monthly Payment</label>
+          <div class="dollar-input">
+            <span>$</span>
+            <input id="new-debt-pay" type="text" value="0" 
+                   class="input-big w-full rounded-3xl">
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-6">
+        <div>
+          <label class="block text-sm opacity-75 mb-2">Interest Rate (%) <span class="text-xs opacity-50">(optional)</span></label>
+          <input id="new-debt-rate" type="number" step="0.1" value="0" 
+                 class="input-big w-full rounded-3xl text-center">
+        </div>
+        <div>
+          <label class="block text-sm opacity-75 mb-2">Remaining Months <span class="text-xs opacity-50">(optional)</span></label>
+          <input id="new-debt-months" type="number" value="0" 
+                 class="input-big w-full rounded-3xl text-center">
+        </div>
+      </div>
+    </div>
+
+    <!-- BUTTONS AT BOTTOM -->
+    <div class="p-6 border-t border-white/10 flex gap-4">
+      <button onclick="closeAddDebtModal()" 
+              class="flex-1 py-4 text-lg font-medium border border-zinc-300 dark:border-white/30 hover:bg-white/10 rounded-3xl">
+        Cancel
+      </button>
+      <button onclick="addNewDebt()" 
+              class="flex-1 py-4 text-lg font-bold bg-gradient-to-r from-[#00A89D] to-[#F15A29] text-white rounded-3xl">
+        Add Debt
+      </button>
+    </div>
+
+  </div>
+</div>
+
+  <!-- HELP MODAL -->
+  <div id="help-modal" onclick="if(event.target === this) closeHelpModal()" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[500]">
+    <div onclick="event.stopPropagation()" class="modal glass max-w-lg w-full mx-4 rounded-3xl p-10">
+      <div class="flex justify-between mb-6">
+        <h3 id="help-title" class="text-3xl font-bold"></h3>
+        <button onclick="closeHelpModal()" class="text-5xl leading-none">✕</button>
+      </div>
+      <div id="help-content" class="text-lg leading-relaxed"></div>
+    </div>
+  </div>
+ <!-- Main Plan Loading Modal - Logo always on white background -->
+<!-- Main Plan Loading Modal - Logo always on white background -->
+<div id="loading-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[999]">
+  <div class="glass max-w-lg w-full mx-6 rounded-3xl p-12 text-center shadow-2xl">
+    
+    <!-- Logo forced on clean white background in both modes -->
+    <div class="bg-white px-10 py-5 rounded-3xl shadow-xl mx-auto mb-10 inline-block border border-zinc-100 dark:border-zinc-200">
+      <img src="https://2759433.fs1.hubspotusercontent-na1.net/hubfs/2759433/Ruoff_Mortgage_FC-Jan-18-2026-05-19-19-8281-AM.png" 
+           class="h-24 mx-auto">
+    </div>
+
+    <div class="w-16 h-16 border-4 border-[#00A89D]/30 border-t-[#00A89D] rounded-full animate-spin mx-auto mb-8"></div>
+    
+    <h3 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">Building your personalized Smart Plan...</h3>
+    <p class="text-zinc-600 dark:text-zinc-300 text-lg leading-relaxed">
+      We are carefully analyzing your numbers, debts, and goals
+    </p>
+    <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-8">Usually takes about 60 seconds</p>
+  </div>
+</div>
+
+<!-- Email Loading Modal - Same white logo treatment -->
+<div id="email-loading-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[999]">
+  <div class="glass max-w-lg w-full mx-6 rounded-3xl p-12 text-center shadow-2xl">
+    
+    <div class="bg-white px-10 py-5 rounded-3xl shadow-xl mx-auto mb-10 inline-block border border-zinc-100 dark:border-zinc-200">
+      <img src="https://2759433.fs1.hubspotusercontent-na1.net/hubfs/2759433/Ruoff_Mortgage_FC-Jan-18-2026-05-19-19-8281-AM.png" 
+           class="h-24 mx-auto">
+    </div>
+
+    <div class="w-16 h-16 border-4 border-[#00A89D]/30 border-t-[#00A89D] rounded-full animate-spin mx-auto mb-8"></div>
+    
+    <h3 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">Building your personalized email...</h3>
+    <p class="text-zinc-600 dark:text-zinc-300 text-lg leading-relaxed">
+      Highlighting your monthly savings & other wins
+    </p>
+    <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-8">Just a moment...</p>
+  </div>
+</div>
+
+  <script>
+    let debts = [];
+    let escrowIncluded = true;
+    let isDark = true;
+    let mortgageModalSource = 'main';   // 'main' or 'debts'
+    let currentBalance = 320000;
+    let totalPayment = 2087;
+    let taxes = 450;
+    let insurance = 180;
+    let pmi = 0;
+    let currentRemainingYears = 27;   // default value
+
+        function toggleTheme() {
+      isDark = !isDark;
+      document.documentElement.classList.toggle('dark', isDark);
+      document.getElementById('theme-icon').classList.toggle('fa-sun', !isDark);
+      document.getElementById('theme-icon').classList.toggle('fa-moon', isDark);
+      document.getElementById('theme-text').textContent = isDark ? 'Light Mode' : 'Dark Mode';
+    }
+
+    function calculateMonthlyPayment(principal, annualRate, years) {
+  if (!principal || principal <= 0) return 0;
+  const monthlyRate = annualRate / 100 / 12;
+  const numPayments = years * 12;
+  if (monthlyRate <= 0) return principal / numPayments;
+  const power = Math.pow(1 + monthlyRate, numPayments);
+  return principal * monthlyRate * power / (power - 1);
+}
+    function updateLifetimeInterestSavings(newLoan, newRate, newTerm) {
+  const card = document.getElementById('lifetime-interest-card');
+  
+  if (newTerm >= 30) {
+    document.getElementById('interest-saved-amount').innerHTML = `<span class="text-2xl opacity-60">Adjust term length ↓</span>`;
+    document.getElementById('interest-subtitle').innerHTML = `<span class="text-emerald-700 dark:text-emerald-400">to see how much lifetime interest you could save</span>`;
+    return;
+  }
+
+  const pi30 = calculateMonthlyPayment(newLoan, newRate, 30);
+  const piShort = calculateMonthlyPayment(newLoan, newRate, newTerm);
+  const saved = Math.round(pi30 * 360 - piShort * newTerm * 12);
+
+  document.getElementById('interest-saved-amount').innerHTML = `
+    <span class="text-5xl font-black text-emerald-700 dark:text-emerald-400">$${saved.toLocaleString()}</span>
+  `;
+
+  document.getElementById('interest-subtitle').innerHTML = `
+    by choosing a <span class="font-bold">${newTerm}-year term</span><br>
+    <span class="text-emerald-700 dark:text-emerald-400">(${30 - newTerm} years faster)</span>
+  `;
+}
+function updateLoanSliderLimits() {
+  const homeStr = document.getElementById('home-value').value.replace(/,/g, '');
+  const homeValue = parseFloat(homeStr) || 738000;
+
+  // Are we doing a cash-out? (any debt besides Current Mortgage selected)
+  const hasCashOut = debts.some(d => d.payOff && d.name !== "Current Mortgage");
+
+  const maxLTV = hasCashOut ? 0.80 : 1.00;
+  const maxLoan = Math.floor(homeValue * maxLTV);
+
+  // Update slider & number input
+  const slider = document.getElementById('new-loan-slider');
+  slider.max = maxLoan;
+
+  const input = document.getElementById('new-loan-amt');
+  input.max = maxLoan;   // also prevents typing higher
+
+  // Clamp current value if it's now too high
+  let currentLoan = parseFloat(input.value) || 370000;
+  if (currentLoan > maxLoan) {
+    currentLoan = maxLoan;
+    input.value = currentLoan;
+  }
+
+  // Show/hide beautiful warning
+  const warning = document.getElementById('loan-limit-warning');
+  if (hasCashOut) {
+    warning.classList.remove('hidden');
+    document.getElementById('warning-text').textContent = 
+      `Cash-out refinances are limited to 80% LTV (${maxLoan.toLocaleString()})`;
+  } else {
+    warning.classList.add('hidden');
+  }
+
+  // If we clamped the value, trigger live update
+  if (parseFloat(document.getElementById('new-loan-amt').value) !== currentLoan) {
+    liveUpdate();
+  }
+}
+    function updateCurrentSituationSummary() {
+  const isIncluded = escrowIncluded;
+  const totalToLender = totalPayment;
+
+  let totalHousing;
+  let pi;
+
+  if (isIncluded) {
+    pi = Math.max(0, totalToLender - taxes - insurance - pmi);
+    totalHousing = totalToLender;
+  } else {
+    pi = Math.max(0, totalToLender - pmi);
+    totalHousing = totalToLender + taxes + insurance;
+  }
+
+  document.getElementById('summary-balance').textContent = '$' + currentBalance.toLocaleString();
+  document.getElementById('summary-total-pay').textContent = '$' + totalHousing.toLocaleString();   // now correct
+  document.getElementById('summary-pi').textContent = '$' + pi.toLocaleString();
+  document.getElementById('summary-escrow').textContent = '$' + (taxes + insurance + pmi).toLocaleString();
+}
+
+          function loadFromStorage() {
+      const saved = localStorage.getItem('ruoffCalculatorData');
+      if (saved) {
+        const data = JSON.parse(saved);
+        
+        currentBalance = data.currentBalance || 320000;
+        totalPayment = data.totalPayment || 2087;
+        taxes = data.taxes || 450;
+        insurance = data.insurance || 180;
+        pmi = data.pmi || 0;
+        escrowIncluded = data.escrowIncluded !== false;
+
+        // Home Value persistence
+        if (data.homeValue) {
+          document.getElementById('home-value').value = Number(data.homeValue).toLocaleString();
+          document.getElementById('home-slider').value = data.homeValue;
+        }
+
+        // New Refi Scenario persistence
+        if (data.newLoanAmount) document.getElementById('new-loan-amt').value = data.newLoanAmount;
+        if (data.newRate) document.getElementById('new-rate').value = data.newRate;
+        if (data.newTerm) document.getElementById('new-term').value = data.newTerm;
+
+        // Mortgage modal persistence
+        if (data.currentRate) document.getElementById('current-rate').value = data.currentRate;
+        if (data.yearsRemaining) document.getElementById('years-remaining').value = data.yearsRemaining;
+        if (data.closingDate) document.getElementById('closing-date').value = data.closingDate;
+
+        debts = data.debts || [];
+      }
+    }
+
+        function saveToStorage() {
+      const homeValue = parseFloat(document.getElementById('home-value').value.replace(/,/g,'')) || 738000;
+      const newLoanAmount = parseFloat(document.getElementById('new-loan-amt').value) || 370000;
+      const newRate = parseFloat(document.getElementById('new-rate').value) || 5.875;
+      const newTerm = parseFloat(document.getElementById('new-term').value) || 30;
+
+      localStorage.setItem('ruoffCalculatorData', JSON.stringify({
+        currentBalance, 
+        totalPayment, 
+        taxes, 
+        insurance, 
+        pmi,
+        escrowIncluded,
+        homeValue,
+        newLoanAmount,
+        newRate,
+        newTerm,
+        currentRate: document.getElementById('current-rate') ? document.getElementById('current-rate').value : 6.75,
+        yearsRemaining: document.getElementById('years-remaining') ? document.getElementById('years-remaining').value : 27,
+        closingDate: document.getElementById('closing-date') ? document.getElementById('closing-date').value : '',
+        debts
+      }));
+    }
+
+    // === PERSISTENT CLIENT INFORMATION (borrower tool only) ===
+function loadClientInfo() {
+  document.getElementById('client-name').value  = localStorage.getItem('borrower_client_name')  || '';
+  document.getElementById('client-email').value = localStorage.getItem('borrower_client_email') || '';
+  document.getElementById('client-phone').value = localStorage.getItem('borrower_client_phone') || '';
+  document.getElementById('client-notes').value = localStorage.getItem('borrower_client_notes') || '';
+}
+
+function saveClientInfo() {
+  localStorage.setItem('borrower_client_name',  document.getElementById('client-name').value.trim());
+  localStorage.setItem('borrower_client_email', document.getElementById('client-email').value.trim());
+  localStorage.setItem('borrower_client_phone', document.getElementById('client-phone').value.trim());
+  localStorage.setItem('borrower_client_notes', document.getElementById('client-notes').value.trim());
+}
+
+    function liveUpdate() {
+  const home = parseFloat(document.getElementById('home-value').value.replace(/,/g,'')) || 651000;
+  const newLoan = parseFloat(document.getElementById('new-loan-amt').value) || 370000;
+  const newRate = parseFloat(document.getElementById('new-rate').value) || 5.875;
+  const newTerm = parseFloat(document.getElementById('new-term').value) || 30;
+
+  // Home value calculations
+  const equity = Math.max(0, home - currentBalance);
+  const ltv = Math.round((currentBalance / home) * 100) || 0;
+
+  document.getElementById('equity').textContent = '$' + equity.toLocaleString();
+  document.getElementById('ltv').textContent = ltv + '%';
+
+    // P&I calculations
+  const oldPI = escrowIncluded 
+    ? Math.max(0, totalPayment - taxes - insurance - pmi) 
+    : totalPayment;
+
+  const newPI = calculateMonthlyPayment(newLoan, newRate, newTerm);
+
+  // Debt calculations
+  const otherDebtsPaidOff = debts.reduce((sum, d) => {
+    return (d.payOff && d.name !== "Current Mortgage") ? sum + (d.bal || 0) : sum;
+  }, 0);
+
+  const totalDebtsPaidOff = currentBalance + otherDebtsPaidOff;
+
+  const debtMonthlyPayments = debts.reduce((sum, d) => {
+    return (d.payOff && d.name !== "Current Mortgage") ? sum + (d.pay || 0) : sum;
+  }, 0);
+
+  // Net monthly savings (now correctly goes UP or DOWN when you change new loan amount)
+  const totalMonthlySavingsFromDebts = debtMonthlyPayments + (oldPI - newPI);
+
+  // Round to nearest whole dollar - no cents ever
+  const roundedSavings = Math.round(totalMonthlySavingsFromDebts);
+
+  // Cash Back
+  const cashBack = newLoan - currentBalance - otherDebtsPaidOff - 6000;
+
+  // Update Current Situation
+  updateCurrentSituationSummary();
+
+    // Update the 3 big New Refi boxes
+  const savingsEl = document.getElementById('debt-monthly-savings');
+  savingsEl.textContent = (roundedSavings >= 0 ? '$' : '-$') + Math.abs(roundedSavings).toLocaleString();
+  savingsEl.style.color = roundedSavings >= 0 ? '#00A89D' : '#ef4444';
+
+  document.getElementById('total-debts-paid').textContent = '$' + totalDebtsPaidOff.toLocaleString();
+
+  const cashEl = document.getElementById('cash-back');
+  if (cashBack >= 0) {
+    cashEl.textContent = '$' + cashBack.toLocaleString();
+    cashEl.style.color = '#F15A29';
+  } else {
+    cashEl.textContent = '-$' + Math.abs(cashBack).toLocaleString();
+    cashEl.style.color = '#ef4444';
+  }
+
+  // Lifetime Interest Savings
+  updateLifetimeInterestSavings(newLoan, newRate, newTerm);
+
+      saveToStorage();
+        updateLoanSliderLimits();
+}
+  
+       function formatHomeValue() {
+      let v = document.getElementById('home-value').value.replace(/[^0-9]/g, '');
+      document.getElementById('home-value').value = Number(v).toLocaleString();
+      document.getElementById('home-slider').value = v || 651000;
+      liveUpdate();
+            saveToStorage();
+    }
+
+    function syncSlider() {
+      const v = document.getElementById('home-slider').value;
+      document.getElementById('home-value').value = Number(v).toLocaleString();
+      liveUpdate();
+            saveToStorage();
+    }
+
+    function syncNewLoanSlider() {
+  document.getElementById('new-loan-amt').value = document.getElementById('new-loan-slider').value;
+  liveUpdate();
+}
+
+    function syncNewRateSlider() {
+      document.getElementById('new-rate').value = document.getElementById('new-rate-slider').value;
+      liveUpdate();
+    }
+
+    function syncBalanceSlider() {
+      document.getElementById('modal-balance').value = document.getElementById('balance-slider').value;
+      updateMortgageModal();
+    }
+
+  function openMortgageModal(fromDebts = false) {
+  mortgageModalSource = fromDebts ? 'debts' : 'main';
+
+  document.getElementById('modal-balance').value = currentBalance;
+  document.getElementById('balance-slider').value = currentBalance;
+  document.getElementById('total-payment').value = totalPayment;
+  document.getElementById('taxes').value = taxes;
+  document.getElementById('insurance').value = insurance;
+  document.getElementById('pmi').value = pmi;
+  
+  document.getElementById('escrow-included').checked = escrowIncluded;
+  
+  updateMortgageModal();
+  document.getElementById('mortgage-modal').classList.remove('hidden');
+  
+  if (fromDebts) document.getElementById('debts-modal').classList.add('hidden');
+}
+
+function closeMortgageModal() {
+  try {
+    // Save the values
+    currentBalance = parseFloat(document.getElementById('modal-balance').value) || 320000;
+    totalPayment   = parseFloat(document.getElementById('total-payment').value) || 2087;
+    taxes          = parseFloat(document.getElementById('taxes').value) || 450;
+    insurance      = parseFloat(document.getElementById('insurance').value) || 180;
+    pmi            = parseFloat(document.getElementById('pmi').value) || 0;
+    escrowIncluded = document.getElementById('escrow-included').checked;
+
+    // ←←← ADD THIS LINE (This was missing)
+    currentRemainingYears = parseFloat(document.getElementById('years-remaining').value) || 27;
+
+    saveToStorage();
+
+    // Close the modal
+    document.getElementById('mortgage-modal').classList.add('hidden');
+
+    updateCurrentSituationSummary();
+    liveUpdate();
+
+    // Return to Manage Debts if we came from there
+    if (mortgageModalSource === 'debts') {
+      setTimeout(() => openDebtsModal(), 250);
+    }
+
+  } catch (e) {
+    console.error("Error in closeMortgageModal:", e);
+    document.getElementById('mortgage-modal').classList.add('hidden');
+  }
+}
+
+        function updateMortgageModal() {
+  const isIncluded = document.getElementById('escrow-included').checked;
+  const totalToLender = parseFloat(document.getElementById('total-payment').value) || 0;
+  const taxesVal = parseFloat(document.getElementById('taxes').value) || 0;
+  const insuranceVal = parseFloat(document.getElementById('insurance').value) || 0;
+  const pmiVal = parseFloat(document.getElementById('pmi').value) || 0;
+
+  // FORCE SYNC global pmi every time the field changes (this fixes the revert to $120)
+  pmi = pmiVal;
+
+  let piPortion;
+  let totalHousingCost;
+
+  if (isIncluded) {
+    piPortion = Math.max(0, totalToLender - taxesVal - insuranceVal - pmiVal);
+    totalHousingCost = totalToLender;
+    document.getElementById('taxes').disabled = true;
+    document.getElementById('insurance').disabled = true;
+  } else {
+    piPortion = Math.max(0, totalToLender - pmiVal);
+    totalHousingCost = totalToLender + taxesVal + insuranceVal;
+    document.getElementById('taxes').disabled = false;
+    document.getElementById('insurance').disabled = false;
+  }
+
+  document.getElementById('modal-pi').textContent = '$' + piPortion.toLocaleString();
+  document.getElementById('modal-total-housing').textContent = '$' + totalHousingCost.toLocaleString();
+
+  saveToStorage(); // Save immediately
+}
+
+    function openDebtsModal() {
+      debts = debts.length ? debts : [{name: "Current Mortgage", bal: currentBalance, pay: Math.max(0, totalPayment - taxes - insurance - pmi), payOff: true}];
+      renderDebts();
+      document.getElementById('debts-modal').classList.remove('hidden');
+    }
+
+    function closeDebtsModal() {
+      saveToStorage();
+      document.getElementById('debts-modal').classList.add('hidden');
+      liveUpdate();
+    }
+
+    function switchToMortgageModal() {
+      closeDebtsModal();
+      setTimeout(() => openMortgageModal(true), 300);
+    }
+
+   function renderDebts() {
+  const container = document.getElementById('debts-list');
+  container.innerHTML = '';
+
+  let totalMonthly = 0;
+  let totalPayoff = 0;
+
+  debts.forEach((d, i) => {
+    // Force Current Mortgage to always be paid off
+    if (d.name === "Current Mortgage") {
+      d.payOff = true;
+      d.bal = currentBalance;
+      d.pay = escrowIncluded 
+        ? Math.max(0, totalPayment - taxes - insurance - pmi) 
+        : totalPayment;
+    }
+
+    if (d.payOff) {
+      totalMonthly += d.pay || 0;
+      totalPayoff += d.bal || 0;
+    }
+
+    const isMortgage = d.name === "Current Mortgage";
+
+    // === LOCKED VERSION FOR CURRENT MORTGAGE ===
+    let toggleHTML, rowClass, editHTML;
+
+    if (isMortgage) {
+      rowClass = 'opacity-75 bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-300 dark:border-white/10'; // subtle shade + lock feel
+      toggleHTML = `
+        <label class="debt-toggle">
+          <input type="checkbox" checked disabled>
+          <span class="debt-toggle-slider bg-emerald-600/70"></span>
+        </label>
+        <div class="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+          <i class="fas fa-lock"></i> 
+          <span class="font-medium">Always paid off with refinance</span>
+        </div>`;
+      editHTML = `
+        <button onclick="switchToMortgageModal()" 
+                class="text-[#00A89D] hover:text-white text-3xl px-3">
+          <i class="fas fa-pencil-alt"></i>
+        </button>`;
+    } else {
+      rowClass = 'debt-card';
+      toggleHTML = `
+        <label class="debt-toggle">
+          <input type="checkbox" ${d.payOff ? 'checked' : ''} 
+                 onchange="debts[${i}].payOff = this.checked; renderDebts(); liveUpdate()">
+          <span class="debt-toggle-slider"></span>
+        </label>
+        <div class="text-[10px] text-white/70 mt-0.5">Pay off with refi</div>`;
+      editHTML = `
+        <button onclick="editDebt(${i})" 
+                class="text-[#00A89D] hover:text-white text-3xl px-3">
+          <i class="fas fa-pencil-alt"></i>
+        </button>`;
+    }
+
+    const html = `
+      <div class="${rowClass} glass rounded-3xl p-8 flex gap-8 items-start">
+        <div class="flex-1 min-w-0">
+          <input value="${d.name}" ${isMortgage ? 'readonly' : ''} 
+                 oninput="if(!${isMortgage}) {debts[${i}].name=this.value; liveUpdate()}" 
+                 class="bg-transparent text-2xl font-semibold w-full focus:outline-none ${isMortgage ? 'cursor-default' : ''}">
+
+          <div class="grid grid-cols-2 gap-10 mt-6">
+            <div>
+              <div class="text-xs opacity-60">BALANCE</div>
+              <div class="dollar-input">
+                <span>$</span>
+                <input type="text" value="${Number(d.bal || 0).toLocaleString()}" 
+                       ${isMortgage ? 'readonly' : ''} 
+                       oninput="if(!${isMortgage}) {debts[${i}].bal = parseFloat(this.value.replace(/,/g,'')) || 0; liveUpdate()}" 
+                       class="bg-transparent text-3xl font-black w-52 focus:outline-none text-right ${isMortgage ? 'cursor-default' : ''}">
+              </div>
+            </div>
+            <div>
+              <div class="text-xs opacity-60">MONTHLY PAYMENT</div>
+              <div class="dollar-input">
+                <span>$</span>
+                <input type="text" value="${Number(d.pay || 0).toLocaleString()}" 
+                       ${isMortgage ? 'readonly' : ''} 
+                       oninput="if(!${isMortgage}) {debts[${i}].pay = parseFloat(this.value.replace(/,/g,'')) || 0; liveUpdate()}" 
+                       class="bg-transparent text-3xl font-black w-48 focus:outline-none text-right ${isMortgage ? 'cursor-default' : ''}">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col items-end gap-6 pt-1">
+          ${toggleHTML}
+          ${editHTML}
+          ${!isMortgage ? `
+            <button onclick="removeDebt(${i}); renderDebts()" 
+                    class="text-red-400 hover:text-red-500 text-3xl transition-colors">
+              <i class="fas fa-trash"></i>
+            </button>` : ''}
+        </div>
+      </div>
+    `;
+    container.innerHTML += html;
+  });
+
+  document.getElementById('modal-total-monthly').textContent = '$' + totalMonthly.toLocaleString();
+  document.getElementById('modal-total-payoff').textContent = '$' + totalPayoff.toLocaleString();
+  updateLoanSliderLimits();
+}
+    function openAddDebtModal() {
+  const modal = document.getElementById('add-debt-modal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    setTimeout(() => document.getElementById('new-debt-name').focus(), 100);
+  }
+}
+
+function closeAddDebtModal() {
+  const modal = document.getElementById('add-debt-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+    function addNewDebt() {
+      const name = document.getElementById('new-debt-name').value.trim() || "New Debt";
+      const bal = parseFloat(document.getElementById('new-debt-balance').value.replace(/,/g, '')) || 0;
+      const pay = parseFloat(document.getElementById('new-debt-pay').value.replace(/,/g, '')) || 0;
+      const rate = parseFloat(document.getElementById('new-debt-rate').value) || 0;
+      const months = parseFloat(document.getElementById('new-debt-months').value) || 0;
+
+      if (window.editingDebtIndex !== undefined) {
+        // Update existing debt
+        debts[window.editingDebtIndex] = { name, bal, pay, rate, months, payOff: debts[window.editingDebtIndex].payOff };
+        delete window.editingDebtIndex;
+      } else {
+        // Add new debt
+        debts.push({ name, bal, pay, rate, months, payOff: true });
+      }
+
+      closeAddDebtModal();
+      renderDebts();
+      liveUpdate();
+      saveToStorage();
+    }
+
+    function removeDebt(i) {
+      debts.splice(i,1);
+      renderDebts();
+      liveUpdate();
+    }
+
+    function clearAllData() {
+      if (confirm("Clear ALL data and reset to defaults?")) {
+        localStorage.removeItem('ruoffCalculatorData');
+        currentBalance = 320000;
+        totalPayment = 2087;
+        taxes = 450;
+        insurance = 180;
+        pmi = 0;
+        debts = [];
+        closeDebtsModal();
+        liveUpdate();
+      }
+    }
+
+    function showHelpModal(title, content) {
+      document.getElementById('help-title').textContent = title;
+      document.getElementById('help-content').innerHTML = content;
+      document.getElementById('help-modal').classList.remove('hidden');
+    }
+
+    function closeHelpModal() {
+      document.getElementById('help-modal').classList.add('hidden');
+    }
+    
+ // Monthly Savings from Debts Modal (scrollable, full visibility)
+function showDebtSavingsModal() {
+  const oldPI = escrowIncluded 
+    ? Math.max(0, totalPayment - taxes - insurance - pmi) 
+    : totalPayment;
+
+  const newPI = calculateMonthlyPayment(
+    parseFloat(document.getElementById('new-loan-amt')?.value) || 370000,
+    parseFloat(document.getElementById('new-rate')?.value) || 5.875,
+    parseFloat(document.getElementById('new-term')?.value) || 30
+  );
+
+  const debtMonthlyPayments = debts.reduce((sum, d) => {
+    return (d.payOff && d.name !== "Current Mortgage") ? sum + (d.pay || 0) : sum;
+  }, 0);
+
+  const totalOldMonthly = oldPI + debtMonthlyPayments;
+  const totalNewMonthly = newPI;
+  const savings = Math.round(totalOldMonthly - totalNewMonthly);
+
+  const html = `
+    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[999] animate-fadeIn overflow-y-auto p-4" onclick="if(event.target === this) closeDebtSavingsModal()">
+      <div class="bg-gradient-to-br from-teal-50 to-white dark:from-zinc-900 dark:to-zinc-800 max-w-3xl w-full rounded-3xl p-8 md:p-10 shadow-2xl border border-teal-200/50 dark:border-teal-800/50 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+        <h2 class="text-4xl font-bold text-zinc-900 dark:text-white mb-8 flex items-center gap-4 sticky top-0 bg-gradient-to-br from-teal-50 to-white dark:from-zinc-900 dark:to-zinc-800 z-10 py-4">
+          <i class="fas fa-hand-holding-usd text-teal-600 text-4xl"></i>
+          Monthly Savings from Debts
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div class="bg-white dark:bg-zinc-800 p-6 rounded-2xl shadow-sm">
+            <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-1">Old Total Monthly Payments</p>
+            <p class="text-4xl font-black text-zinc-900 dark:text-white">$${totalOldMonthly.toLocaleString()}</p>
+          </div>
+          <div class="bg-white dark:bg-zinc-800 p-6 rounded-2xl shadow-sm">
+            <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-1">New Monthly Payment (P&I only)</p>
+            <p class="text-4xl font-black text-zinc-900 dark:text-white">$${Math.round(newPI).toLocaleString()}</p>
+          </div>
+        </div>
+
+        <div class="bg-teal-100/70 dark:bg-teal-900/40 p-8 rounded-3xl mb-8 text-center border border-teal-300/60">
+          <p class="text-xl text-zinc-800 dark:text-zinc-200 mb-3">Your Monthly Savings</p>
+          <p id="savings-count" class="text-6xl md:text-7xl font-black text-teal-700 dark:text-teal-400">$${savings.toLocaleString()}</p>
+          <p class="text-base md:text-lg text-zinc-600 dark:text-zinc-300 mt-4">
+            More cash flow every month – freedom to save, invest, or enjoy life!
+          </p>
+        </div>
+
+        <div class="space-y-4 mb-10">
+          <p class="text-xl font-semibold text-zinc-800 dark:text-zinc-200 mb-4">Debts Contributing to Savings</p>
+          ${debts.map(d => {
+            if (d.payOff) {
+              const label = d.name === "Current Mortgage" ? "Current Mortgage Payoff" : d.name;
+              return `
+                <div class="flex justify-between items-center bg-white dark:bg-zinc-800 p-5 rounded-2xl shadow-sm border-l-4 border-teal-500">
+                  <span class="text-xl font-medium">${label}</span>
+                  <span class="text-xl font-black text-teal-600 dark:text-teal-400">$${d.pay?.toLocaleString() || '0'}</span>
+                </div>`;
+            }
+            return '';
+          }).join('')}
+        </div>
+
+        <button onclick="closeDebtSavingsModal()" class="w-full py-5 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 text-white text-xl font-bold rounded-3xl shadow-lg transition-all transform hover:scale-[1.02]">
+          Close
+        </button>
+      </div>
+    </div>
+  `;
+
+  const modalContainer = document.createElement('div');
+  modalContainer.id = 'debt-savings-modal-dynamic';
+  modalContainer.innerHTML = html;
+  document.body.appendChild(modalContainer);
+
+  if (typeof CountUp !== 'undefined') {
+    new CountUp('savings-count', savings, { duration: 1.8, separator: ',', prefix: '$' }).start();
+  }
+}
+
+function closeDebtSavingsModal() {
+  const modal = document.getElementById('debt-savings-modal-dynamic');
+  if (modal) modal.remove();
+}
+
+// Total Debts Being Paid Off Modal (same scroll fixes)
+function showTotalDebtsModal() {
+  let total = 0;
+  let itemsHtml = '';
+
+  debts.forEach(d => {
+    if (d.payOff) {
+      total += d.bal || 0;
+      const label = d.name === "Current Mortgage" ? "Current Mortgage Payoff" : d.name;
+      itemsHtml += `
+        <div class="flex justify-between items-center bg-white dark:bg-zinc-800 p-6 rounded-2xl shadow-sm border-l-4 border-orange-500">
+          <span class="text-xl font-medium text-zinc-900 dark:text-white">${label}</span>
+          <span class="text-xl font-black text-orange-600 dark:text-orange-400">$${ (d.bal || 0).toLocaleString() }</span>
+        </div>`;
+    }
+  });
+
+  if (!itemsHtml) {
+    itemsHtml = '<div class="text-center py-16 text-2xl opacity-60">No debts selected for payoff</div>';
+  }
+
+  const html = `
+    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[999] animate-fadeIn overflow-y-auto p-4" onclick="if(event.target === this) closeTotalDebtsModal()">
+      <div class="bg-gradient-to-br from-orange-50 to-white dark:from-zinc-900 dark:to-zinc-800 max-w-3xl w-full rounded-3xl p-8 md:p-10 shadow-2xl border border-orange-200/50 dark:border-orange-800/50 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+        <h2 class="text-4xl font-bold text-zinc-900 dark:text-white mb-8 flex items-center gap-4 sticky top-0 bg-gradient-to-br from-orange-50 to-white dark:from-zinc-900 dark:to-zinc-800 z-10 py-4">
+          <i class="fas fa-balance-scale text-orange-600 text-4xl"></i>
+          Total Debts Being Paid Off
+        </h2>
+
+        <div class="space-y-5 mb-10">${itemsHtml}</div>
+
+        <div class="bg-orange-100/70 dark:bg-orange-900/40 p-8 rounded-3xl text-center border border-orange-300/60 shadow-inner">
+          <p class="text-xl text-zinc-800 dark:text-zinc-200 mb-3">Grand Total</p>
+          <p id="total-debts-count" class="text-6xl md:text-7xl font-black text-orange-700 dark:text-orange-400">$${total.toLocaleString()}</p>
+          <p class="text-base md:text-lg text-zinc-600 dark:text-zinc-300 mt-4">
+            All cleared in one smart move!
+          </p>
+        </div>
+
+        <button onclick="closeTotalDebtsModal()" class="w-full py-6 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 text-white text-2xl font-bold rounded-3xl shadow-xl transition-all transform hover:scale-[1.02] mt-10">
+          Close
+        </button>
+      </div>
+    </div>
+  `;
+
+  const modalContainer = document.createElement('div');
+  modalContainer.id = 'total-debts-modal-dynamic';
+  modalContainer.innerHTML = html;
+  document.body.appendChild(modalContainer);
+
+  if (typeof CountUp !== 'undefined') {
+    new CountUp('total-debts-count', total, { duration: 1.8, separator: ',', prefix: '$' }).start();
+  }
+}
+
+function closeTotalDebtsModal() {
+  const modal = document.getElementById('total-debts-modal-dynamic');
+  if (modal) modal.remove();
+}
+
+// Cash Back After Closing Costs Modal
+function showCashBackModal() {
+  const newLoan = parseFloat(document.getElementById('new-loan-amt')?.value) || 370000;
+  const currentMortgagePayoff = currentBalance || 0;
+  const otherDebtsPaidOff = debts.reduce((sum, d) => {
+    return (d.payOff && d.name !== "Current Mortgage") ? sum + (d.bal || 0) : sum;
+  }, 0);
+
+  const totalPaidOff = currentMortgagePayoff + otherDebtsPaidOff;
+  const closingCosts = 6000; // your estimate
+  const cashBack = Math.max(0, newLoan - totalPaidOff - closingCosts);
+
+  const newRate = parseFloat(document.getElementById('new-rate')?.value) || 5.875;
+  const newTerm = parseFloat(document.getElementById('new-term')?.value) || 30;
+  const newPI = calculateMonthlyPayment(newLoan, newRate, newTerm);
+
+  const oldPayment = totalPayment || 0;
+  const otherMonthlyPayments = debts.reduce((sum, d) => {
+    return (d.payOff && d.name !== "Current Mortgage") ? sum + (d.pay || 0) : sum;
+  }, 0);
+
+  document.getElementById('modal-new-loan').textContent = '$' + newLoan.toLocaleString();
+  document.getElementById('modal-new-payment').textContent = '$' + Math.round(newPI).toLocaleString();
+
+  document.getElementById('modal-current-mortgage').textContent = '-$' + currentMortgagePayoff.toLocaleString();
+  document.getElementById('modal-old-payment').textContent = '$' + oldPayment.toLocaleString();
+
+  document.getElementById('modal-other-debts').textContent = otherDebtsPaidOff > 0 ? '-$' + otherDebtsPaidOff.toLocaleString() : '$0';
+  document.getElementById('modal-other-monthly').textContent = '$' + otherMonthlyPayments.toLocaleString();
+
+  document.getElementById('modal-cash-back-final').innerHTML = `
+    <p class="text-6xl font-black text-teal-700 dark:text-teal-400 animate-pulse-slow">$${cashBack.toLocaleString()}</p>
+    <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-3">Net cash in your pocket after all payoffs & costs</p>
+  `;
+
+  // Add count-up to cash back
+  if (typeof CountUp !== 'undefined') {
+    new CountUp('modal-cash-back-final', cashBack, { 
+      duration: 1.8, 
+      separator: ',', 
+      prefix: '$' 
+    }).start();
+  }
+
+  document.getElementById('cash-back-modal').classList.remove('hidden');
+}
+
+function closeCashBackModal() {
+  document.getElementById('cash-back-modal').classList.add('hidden');
+}
+
+// Fix Lifetime Interest Modal (restore full functionality)
+function showLifetimeModal() {
+  const newLoan = parseFloat(document.getElementById('new-loan-amt')?.value) || 0;
+  const newRate = parseFloat(document.getElementById('new-rate')?.value) || 5.75;
+  const pi30 = calculateMonthlyPayment(newLoan, newRate, 30);
+
+  let html = '';
+
+  [25, 20, 15, 10].forEach(term => {
+    const pi = calculateMonthlyPayment(newLoan, newRate, term);
+    const saved = Math.round(pi30 * 360 - pi * term * 12);
+    const increase = Math.round(pi - pi30);
+
+    html += `
+      <div class="flex justify-between items-start bg-white dark:bg-zinc-800 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-700 shadow-sm">
+        <div>
+          <div class="text-2xl font-bold text-zinc-900 dark:text-white">${term}-year term</div>
+          <div class="text-base text-zinc-600 dark:text-zinc-400 mt-1">$${pi.toLocaleString()} monthly P&I</div>
+        </div>
+        <div class="text-right">
+          <div class="text-3xl font-black text-emerald-700 dark:text-emerald-400">Save $${saved.toLocaleString()}</div>
+          <div class="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+            (increase of $${increase} over 30-year)
+          </div>
+        </div>
+      </div>`;
+  });
+
+  const modalHtml = `
+    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[999] animate-fadeIn" onclick="if(event.target === this) closeLifetimeModal()">
+      <div class="bg-gradient-to-br from-white to-emerald-50 dark:from-zinc-900 dark:to-zinc-800 max-w-3xl w-full mx-6 rounded-3xl p-10 shadow-2xl border border-emerald-200/50 dark:border-emerald-800/50" onclick="event.stopPropagation()">
+        <h2 class="text-4xl font-bold text-zinc-900 dark:text-white mb-10 flex items-center gap-4">
+          <i class="fas fa-chart-line text-emerald-600 text-4xl"></i>
+          Lifetime Interest Savings Comparison
+        </h2>
+        <div class="space-y-6 mb-10">${html}</div>
+        <button onclick="closeLifetimeModal()" class="w-full py-6 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 text-white text-2xl font-bold rounded-3xl shadow-xl transition-all transform hover:scale-[1.02]">
+          Close
+        </button>
+      </div>
+    </div>
+  `;
+
+  const modalContainer = document.createElement('div');
+  modalContainer.id = 'lifetime-modal-dynamic';
+  modalContainer.innerHTML = modalHtml;
+  document.body.appendChild(modalContainer);
+}
+
+function closeLifetimeModal() {
+  const modal = document.getElementById('lifetime-modal-dynamic');
+  if (modal) modal.remove();
+}
+
+const GROK_API_KEY = " YOUR_API_KEY_HERE ";
+
+async function generateSmartPlan() {
+  const modal = document.getElementById('loading-modal');
+  if (modal) modal.classList.remove('hidden');
+
+  try {
+    document.getElementById('results-area')?.classList.remove('hidden');
+    document.getElementById('tab-content').innerHTML = `
+      <div class="text-center py-32">
+        <i class="fas fa-spinner fa-spin text-6xl text-[#00A89D]"></i>
+        <p class="mt-8 text-2xl">Grok is building your personalized Smart Plan...</p>
+      </div>`;
+
+    // === COLLECT CLIENT DATA ===
+    const clientData = {
+      clientName: document.getElementById('client-name')?.value.trim() || "Valued Client",
+      clientEmail: document.getElementById('client-email')?.value.trim() || "",
+      clientPhone: document.getElementById('client-phone')?.value.trim() || "",
+      clientNotes: document.getElementById('client-notes')?.value.trim() || "",
+
+      homeValue: parseFloat(document.getElementById('home-value')?.value?.replace(/,/g,'') || "651000") || 651000,
+      currentBalance: currentBalance || 0,
+      totalPayment: totalPayment || 0,
+      taxes: taxes || 0,
+      insurance: insurance || 0,
+      pmi: pmi || 0,
+      escrowIncluded: escrowIncluded ?? false,
+
+      // Current mortgage remaining term
+      currentRemainingYears: parseFloat(document.getElementById('years-remaining')?.value) || 27,
+
+      newLoanAmount: parseFloat(document.getElementById('new-loan-amt')?.value || "370000") || 370000,
+      newRate: parseFloat(document.getElementById('new-rate')?.value || "5.875") || 5.875,
+      newTerm: parseFloat(document.getElementById('new-term')?.value || "30") || 30,
+
+      debts: (debts || []).map(d => ({
+        name: d.name || "Unknown",
+        balance: d.bal || 0,
+        monthlyPayment: d.pay || 0,
+        interestRate: d.rate || 0,
+        remainingMonths: d.months || 0,
+        payOff: d.payOff || false
+      }))
+    };
+
+    // === STRONG PROMPT ===
+const prompt = `You are Grok, built by xAI — the most truth-seeking and maximally helpful AI. 
+
+You are now the official Refinance and Mortgage Savings Strategist for Ruoff Mortgage.
+
+**Your Core Job:**
+Analyze the client's full financial picture and recommend the **best possible refinance strategy** that maximizes their benefit (lowest lifetime cost, best cash flow, fastest debt freedom, highest equity build, etc.).
+
+**You are NOT limited by the "New Loan Amount", "New Rate", or "New Term" the user typed in the calculator.**  
+Those are only starting suggestions. You may recommend a completely different loan amount, rate, or term if it is clearly better for the client.
+
+You have full permission to suggest:
+- Rate-and-term refinance only
+- Cash-out refinance
+- Paying off some or all debts
+- Shortening or lengthening the term
+- Any combination that makes mathematical and strategic sense
+
+**Important Data Clarifications (Follow these strictly):**
+- Current Remaining Term on the existing mortgage = ${clientData.currentRemainingYears} years (from the "Years Remaining" field in Current Mortgage Details).
+- The "New Term" field (${clientData.newTerm} years) is ONLY a starting suggestion the borrower entered. It is NOT the current term.
+- Never extend the new loan term beyond the current remaining term of ${clientData.currentRemainingYears} years unless there is a very strong strategic reason and you clearly explain the trade-off.
+
+**Cash-Out & Specific Requests Handling:**
+- If the client notes mention a specific cash-out goal (e.g. "$30k for a new roof", "need $X for roof", "cash for home improvements", "$30,000 for roof", etc.), **prioritize giving the client as close as possible to their full requested amount**.
+- Only deduct the $6,000 closing costs from any cash **beyond** the specifically requested amount.
+- Clearly state in the plan what the client will actually receive after closing costs.
+- Never silently reduce a specifically mentioned cash request without explaining it.
+
+**Data provided:**
+Home Value: $${clientData.homeValue.toLocaleString()}
+Current Mortgage Balance: $${clientData.currentBalance.toLocaleString()}
+Current Monthly Payment: $${clientData.totalPayment.toLocaleString()}
+Taxes + Insurance + PMI: $${(clientData.taxes + clientData.insurance + clientData.pmi).toLocaleString()}
+Escrow Included: ${clientData.escrowIncluded ? "Yes" : "No"}
+
+New Refi Suggestion (treat as optional only): $${clientData.newLoanAmount} at ${clientData.newRate}% for ${clientData.newTerm} years
+
+Full Debt List (including Current Mortgage):
+${JSON.stringify(clientData.debts, null, 2)}
+
+Client Goals / Notes: ${clientData.clientNotes || "None provided"}
+
+**CRITICAL OUTPUT FORMAT — RETURN ONLY VALID JSON**
+
+Return **exactly** this JSON and nothing else:
+
+{
+  "summary": "...",
+  "scenarioComparison": "...",
+  "recommendedPlan": "..."
+}
+
+**Strict Formatting Rules:**
+- Never use emojis or special symbols.
+- Use clean semantic HTML only: <h1>, <h2>, <h3>, <p>, <ul>, <table>, <strong>, <em>
+- Make every section look premium and easy to read when copied into Word.
+
+**Detailed instructions for each section:**
+
+**summary** (This is the first tab the borrower sees — make it extremely polished, warm, trustworthy, and visually appealing):
+- Start with a strong, positive headline: "Great News, [Client First Name]!"
+- Lead with the biggest benefit in one powerful sentence: monthly savings + debts paid off + cash back (respecting any specific cash request in the notes).
+- When possible mention the benefit of applying half their monthly savings back towards the principal of the new loan. Do the math and tell them approximately how many years and how much interest they would save.
+- Use clean Before / After side-by-side cards with clear labels.
+- Keep paragraphs short and scannable.
+- Use professional but warm tone — excited yet credible (no over-the-top hype).
+- End with a soft, natural call-to-action.
+
+**scenarioComparison** (Professional, easy-to-scan comparison):
+- Create a clean, side-by-side comparison using a well-formatted HTML table.
+- Key columns: Metric, Current Situation, Recommended Refi, Difference / Benefit.
+- Rows to include: Monthly Payment (total housing + debts), Principal & Interest, Taxes/Insurance/PMI, Total Debts Paid Off, Cash Back (after $6k closing costs), Loan-to-Value (LTV), Home Equity, Break-even period, Total Interest Paid over life of loan, Payoff Timeline.
+- Use subtle color highlighting on the "Recommended Refi" column (emerald tones for positive differences).
+- After the table, add 2–3 short, scannable paragraphs highlighting the 3 biggest advantages and any important trade-offs.
+
+**recommendedPlan**:
+- Clearly state your top recommendation including the exact new loan amount, interest rate, and new term.
+- The new term must respect the borrower's current remaining term of ${clientData.currentRemainingYears} years. Do not recommend extending the term longer than this unless there is a very strong strategic reason and you clearly explain the trade-off.
+- Briefly explain why your recommendation is better than (or different from) the borrower's initial calculator inputs.
+- Show simple before vs after numbers for monthly payment and long-term interest savings.
+- List which specific debts you recommend paying off and why.
+- Honestly mention any real risks or trade-offs.
+- End with a warm, natural call-to-action.
+
+**Style guidelines for both sections:**
+- Use clean semantic HTML: <h2>, <h3>, <table>, <ul>, <strong>.
+- Use glassmorphic card style where helpful by adding class="glass rounded-3xl p-8" to divs.
+- Keep paragraphs short and scannable.
+- Mobile-friendly layout (tables should stack nicely on small screens if possible).
+- Warm but professional tone — excited about the savings while remaining credible and transparent.
+
+**For ALL sections, account for $6k in closing costs and net it out of any cash back. However, if the client specifically requests cash for a purpose (e.g. roof, renovations), prioritize their requested amount and clearly state the net figure after closing costs.**
+
+Use the client data above to personalize everything accurately.`;
+
+    // === API CALL ===
+    const res = await fetch('https://api.x.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json', 
+        'Authorization': `Bearer ${GROK_API_KEY}` 
+      },
+      body: JSON.stringify({ 
+        model: "grok-4-1-fast-reasoning", 
+        messages: [{ role: "user", content: prompt }], 
+        temperature: 0.7, 
+        max_tokens: 6500 
+      })
+    });
+
+    const data = await res.json();
+    let raw = data.choices?.[0]?.message?.content?.trim() || "";
+    raw = raw.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+
+    const planData = JSON.parse(raw);
+
+    window.currentPlan = {
+      summary: planData.summary || "<p>Error loading Summary</p>",
+      scenarioComparison: planData.scenarioComparison || "<p>Error loading Scenario Comparison</p>",
+      recommendedPlan: planData.recommendedPlan || "<p>Error loading Recommended Plan</p>"
+    };
+
+    const nameEl = document.getElementById('results-client-name');
+    if (nameEl) nameEl.textContent = clientData.clientName || "Client";
+
+    showTab(0);
+
+  } catch (e) {
+    console.error("Generate plan failed:", e);
+    const tab = document.getElementById('tab-content');
+    if (tab) {
+      tab.innerHTML = `
+        <div class="text-center py-32 text-red-600 dark:text-red-400">
+          <p class="text-2xl font-bold">Error generating plan</p>
+          <p class="mt-4">${e.message || 'Unknown error – check console'}</p>
+        </div>`;
+    }
+  } finally {
+    if (modal) modal.classList.add('hidden');
+  }
+
+  setTimeout(() => {
+    try { liveUpdate(); } catch (e) { console.warn("liveUpdate failed after plan generation:", e); }
+  }, 150);
+}
+          function downloadAsWordDoc() {
+      const element = document.getElementById('tab-content');
+      if (!element || element.innerHTML.trim() === '') {
+        alert("Please generate a plan first");
+        return;
+      }
+
+      const content = element.innerHTML;
+      // Cleanest & most readable (recommended)
+const blob = new Blob([
+  '<html><head><title>Ruoff Smart Plan</title></head><body>' + 
+  content + 
+  '</bo' + 'dy></html>'
+], { type: 'application/msword' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `Ruoff_Smart_Plan_${document.getElementById('client-name').value || 'Client'}.doc`;
+      link.click();
+    }
+
+      function showTab(n) {
+  document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', i === n);
+  });
+
+  const contentArea = document.getElementById('tab-content');
+
+  if (!window.currentPlan) {
+    contentArea.innerHTML = `<div class="text-center py-20 text-xl opacity-60">Generate a plan first</div>`;
+    return;
+  }
+
+  const tabs = [
+    window.currentPlan.summary,
+    window.currentPlan.scenarioComparison,
+    window.currentPlan.recommendedPlan
+  ];
+
+  contentArea.innerHTML = tabs[n] || "<p>Content not loaded yet.</p>";
+}
+
+function copyFormattedPlan() {
+  const element = document.getElementById('tab-content');
+  if (!element || element.innerHTML.trim() === '') {
+    alert("Please generate a plan first");
+    return;
+  }
+
+  const htmlContent = element.innerHTML;
+  const plainText = element.innerText;
+
+  try {
+    const clipboardItem = new ClipboardItem({
+      'text/html': new Blob([htmlContent], { type: 'text/html' }),
+      'text/plain': new Blob([plainText], { type: 'text/plain' })
+    });
+    navigator.clipboard.write([clipboardItem]).then(() => {
+      alert("✅ Rich formatted plan copied to clipboard!\n\nPaste into Word, Outlook, or Gmail.");
+    });
+  } catch (err) {
+    navigator.clipboard.writeText(plainText).then(() => {
+      alert("✅ Copied as plain text (rich formatting not supported in this browser).");
+    });
+  }
+}
+
+function contactMyLO() {
+  // Get values safely from the page (these are always available)
+  const name   = document.getElementById('client-name').value.trim()  || "Valued Client";
+  const email  = document.getElementById('client-email').value.trim();
+  const phone  = document.getElementById('client-phone').value.trim();
+  const notes  = document.getElementById('client-notes').value.trim();
+
+  const monthlySavings = document.getElementById('debt-monthly-savings').textContent || '$0';
+  const totalDebtsPaid = document.getElementById('total-debts-paid').textContent || '$0';
+  const cashBack       = document.getElementById('cash-back').textContent || '$0';
+
+  const subject = `Interested in Discussing My Personalized Refi Plan - ${name}`;
+
+  const body = `Hi,
+
+I used the Ruoff Smart Savings Calculator and generated a personalized plan. I'm interested in exploring this further with you.
+
+**My Contact Info:**
+- Name: ${name}
+- Phone: ${phone || '(not provided)'}
+- Email: ${email || '(not provided)'}
+
+**My Plan Highlights:**
+- Monthly Savings: ${monthlySavings}
+- Total Debts Paid Off: ${totalDebtsPaid}
+- Cash Back: ${cashBack}
+
+**My Goals / Notes:**
+${notes || 'None entered yet'}
+
+I'd like to schedule a quick call to review the details and next steps.
+
+Thank you!
+${name}`;
+
+  // Open the email client with their own email pre-filled if they entered one
+  const mailtoLink = `mailto:${email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.location.href = mailtoLink;
+}
+     function toggleClientInfo() {
+      const content = document.getElementById('client-info-content');
+      const chevron = document.getElementById('client-chevron');
+      
+      if (content.style.maxHeight && content.style.maxHeight !== '0px') {
+        content.style.maxHeight = '0px';
+        chevron.style.transform = 'rotate(0deg)';
+      } else {
+        content.style.maxHeight = content.scrollHeight + 'px';
+        chevron.style.transform = 'rotate(180deg)';
+      }
+    }
+          function editDebt(i) {
+      const d = debts[i];
+      if (!d) return;
+
+      // Pre-fill the Add New Debt modal
+      document.getElementById('new-debt-name').value = d.name || '';
+      document.getElementById('new-debt-balance').value = d.bal || 0;
+      document.getElementById('new-debt-pay').value = d.pay || 0;
+      document.getElementById('new-debt-rate').value = d.rate || 0;
+      document.getElementById('new-debt-months').value = d.months || 0;
+
+      // Store the index we're editing
+      window.editingDebtIndex = i;
+
+      openAddDebtModal();
+
+      // Change the "Add Debt" button text to "Save Changes"
+      const addBtn = document.querySelector('#add-debt-modal button[onclick="addNewDebt()"]');
+      if (addBtn) addBtn.textContent = 'Save Changes';
+    }
+           window.onload = () => {
+      loadFromStorage();
+      loadClientInfo();   // Loads their saved info automatically
+
+      // Light/Dark toggle (already working)
+      const themeToggle = document.getElementById('theme-toggle');
+      if (themeToggle) {
+        const savedTheme = localStorage.getItem('ruoffTheme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+          document.documentElement.classList.add('dark');
+          themeToggle.checked = true;
+        }
+        themeToggle.addEventListener('change', () => {
+          document.documentElement.classList.toggle('dark', themeToggle.checked);
+          localStorage.setItem('ruoffTheme', themeToggle.checked ? 'dark' : 'light');
+        });
+      }
+
+      // Auto-save whenever they leave any field (so they only enter once ever)
+      ['client-name','client-email','client-phone','client-notes'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('blur', saveClientInfo);
+      });
+
+      document.getElementById('new-loan-slider').value = document.getElementById('new-loan-amt').value;
+      document.getElementById('new-rate-slider').value = document.getElementById('new-rate').value;
+      liveUpdate();
+    };
+  </script>
+ </body>
+</html>

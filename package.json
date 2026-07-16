@@ -1,8 +1,13 @@
 {
-  "name": "grok-proxy",
-  "version": "1.0.0",
+  "name": "ruoff-smart-savings-calculator",
+  "version": "2.0.0",
+  "releaseDate": "2026-07-16",
+  "description": "Ruoff refinance calculator for LOs and borrowers",
   "main": "server.js",
-  "scripts": { "start": "node server.js" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node js/calculator-core.test.js"
+  },
   "dependencies": {
     "express": "^4.18.2",
     "node-fetch": "^2.6.7"

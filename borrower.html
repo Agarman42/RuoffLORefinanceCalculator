@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ruoff Smart Savings Calculator · LO</title>
+  <title>Ruoff Smart Savings Calculator</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config = { darkMode: 'class' }</script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
@@ -11,15 +11,15 @@
 </head>
 <body class="bg-zinc-50 dark:bg-[#0a0f1c] text-zinc-900 dark:text-white min-h-screen pb-28 md:pb-10">
 
-<header class="bg-gradient-to-r from-[#002B5C] to-[#00A89D] py-5 sticky top-0 z-50 shadow-xl">
+<header class="bg-gradient-to-r from-[#002B5C] to-[#00A89D] py-4 sticky top-0 z-50 shadow-xl">
   <div class="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-4">
     <div>
-      <p class="text-white/80 text-xs font-semibold tracking-wider uppercase">Loan Officer workspace</p>
-      <h1 class="site-title text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-white leading-none">Smart Savings Calculator</h1>
+      <h1 class="site-title text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-white leading-tight">See if refinancing could help</h1>
+      <p class="text-white/85 text-sm mt-0.5">Ruoff Smart Savings Calculator</p>
     </div>
     <div class="flex flex-col items-end gap-2">
-      <div class="bg-white px-4 py-2 rounded-2xl shadow-lg">
-        <img src="https://2759433.fs1.hubspotusercontent-na1.net/hubfs/2759433/Ruoff_Mortgage_FC-Jan-18-2026-05-19-19-8281-AM.png" alt="Ruoff Mortgage" class="h-10 sm:h-12">
+      <div class="bg-white px-3 py-2 rounded-2xl shadow-lg">
+        <img src="https://2759433.fs1.hubspotusercontent-na1.net/hubfs/2759433/Ruoff_Mortgage_FC-Jan-18-2026-05-19-19-8281-AM.png" alt="Ruoff Mortgage" class="h-9 sm:h-11">
       </div>
       <div class="flex items-center gap-2 text-white/90 text-xs">
         <span class="opacity-75">Light</span>
@@ -37,56 +37,25 @@
 
 <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
-  <!-- LO Branding -->
-  <section class="glass rounded-2xl overflow-hidden">
-    <button type="button" onclick="RuoffApp.toggleAccordion('branding')" class="w-full px-5 sm:px-6 py-4 flex items-center justify-between text-left hover:bg-black/5 dark:hover:bg-white/5">
-      <div class="flex items-center gap-3">
-        <i class="fas fa-id-badge text-[#00A89D] text-xl"></i>
-        <div>
-          <h2 class="text-lg font-bold">My branding</h2>
-          <p class="text-xs opacity-60">Appears on plans, emails, and borrower share links</p>
-        </div>
-      </div>
-      <i id="branding-chevron" class="fas fa-chevron-down transition-transform"></i>
-    </button>
-    <div id="branding-content" class="max-h-0 overflow-hidden transition-all duration-300">
-      <div class="px-5 sm:px-6 pb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-xs opacity-70 mb-1">Your name</label>
-          <input id="branding-name" type="text" class="input-field" placeholder="Full name">
-        </div>
-        <div>
-          <label class="block text-xs opacity-70 mb-1">NMLS #</label>
-          <input id="branding-nmls" type="text" class="input-field" placeholder="123456">
-        </div>
-        <div>
-          <label class="block text-xs opacity-70 mb-1">Email</label>
-          <input id="branding-email" type="email" class="input-field" placeholder="you@ruoff.com">
-        </div>
-        <div>
-          <label class="block text-xs opacity-70 mb-1">Cell</label>
-          <input id="branding-cell" type="tel" class="input-field" placeholder="(260) 555-0100">
-        </div>
-        <div class="sm:col-span-2 flex flex-wrap gap-3 justify-end">
-          <button type="button" onclick="RuoffApp.copyBorrowerLink()" class="px-4 py-2 text-sm font-medium border border-zinc-300 dark:border-white/20 rounded-xl hover:bg-black/5 dark:hover:bg-white/10">
-            <i class="fas fa-link mr-1"></i> Copy borrower link
-          </button>
-          <button type="button" onclick="RuoffApp.saveBranding()" class="px-5 py-2 text-sm font-bold bg-gradient-to-r from-[#00A89D] to-[#F15A29] text-white rounded-xl">
-            Save branding
-          </button>
-        </div>
-      </div>
-    </div>
+  <div id="lo-contact-banner" class="hidden glass rounded-2xl px-5 py-3 flex items-center gap-3 border border-[#00A89D]/30">
+    <i class="fas fa-user-check text-[#00A89D]"></i>
+    <p id="lo-contact-banner-text" class="text-sm font-medium"></p>
+  </div>
+
+  <section class="glass rounded-2xl p-5 sm:p-6">
+    <p class="text-sm sm:text-base leading-relaxed opacity-90">
+      Enter a few numbers about your home and mortgage. You’ll see estimated monthly cash-flow change, cash at closing, break-even, and interest vs keeping your current loan — then you can create a personalized plan or contact your loan officer.
+    </p>
   </section>
 
-  <!-- Client info -->
+  <!-- Contact / goals -->
   <section class="glass rounded-2xl overflow-hidden">
     <button type="button" onclick="RuoffApp.toggleAccordion('client')" class="w-full px-5 sm:px-6 py-4 flex items-center justify-between text-left hover:bg-black/5 dark:hover:bg-white/5">
       <div class="flex items-center gap-3">
-        <i class="fas fa-user-tie text-[#00A89D] text-xl"></i>
+        <i class="fas fa-user text-[#00A89D] text-xl"></i>
         <div>
-          <h2 class="text-lg font-bold">Client information</h2>
-          <p class="text-xs opacity-60">Optional — personalizes plans and emails</p>
+          <h2 class="text-lg font-bold">Your contact details &amp; goals</h2>
+          <p class="text-xs opacity-60">Optional — helps personalize your plan</p>
         </div>
       </div>
       <i id="client-chevron" class="fas fa-chevron-down transition-transform"></i>
@@ -94,8 +63,8 @@
     <div id="client-info-content" class="max-h-0 overflow-hidden transition-all duration-300">
       <div class="px-5 sm:px-6 pb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="sm:col-span-2">
-          <label class="block text-xs opacity-70 mb-1">Client name</label>
-          <input id="client-name" type="text" class="input-field" placeholder="John & Sarah Smith" onblur="RuoffApp.saveClient()">
+          <label class="block text-xs opacity-70 mb-1">Your name</label>
+          <input id="client-name" type="text" class="input-field" placeholder="Alex Rivera" onblur="RuoffApp.saveClient()">
         </div>
         <div>
           <label class="block text-xs opacity-70 mb-1">Email</label>
@@ -106,21 +75,21 @@
           <input id="client-phone" type="tel" class="input-field" onblur="RuoffApp.saveClient()">
         </div>
         <div class="sm:col-span-2">
-          <label class="block text-xs opacity-70 mb-1">Notes / goals</label>
-          <textarea id="client-notes" class="input-field h-24 resize-y text-base font-normal" placeholder="Lower payment, retire debt, $30k for roof…" onblur="RuoffApp.saveClient()"></textarea>
+          <label class="block text-xs opacity-70 mb-1">What matters most?</label>
+          <textarea id="client-notes" class="input-field h-24 resize-y text-base font-normal" placeholder="Lower my payment, pay off credit cards, cash for a new roof…" onblur="RuoffApp.saveClient()"></textarea>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Step 1: Home -->
+  <!-- Home -->
   <section class="glass rounded-2xl p-5 sm:p-8">
     <div class="flex justify-between items-start mb-4">
       <div>
-        <h3 class="text-xl font-bold flex items-center"><span class="step-pill">1</span> Home value</h3>
-        <p class="text-sm opacity-70 mt-1 ml-9">Estimated market value</p>
+        <h3 class="text-xl font-bold flex items-center"><span class="step-pill">1</span> Your home’s value</h3>
+        <p class="text-sm opacity-70 mt-1 ml-9">Best estimate of what it would sell for today</p>
       </div>
-      <button type="button" class="text-[#00A89D] text-xl" onclick="RuoffApp.showHelp('Home value', '<p>Use a recent appraisal, AVM, or reasonable estimate of what the home would sell for today. Equity and LTV update automatically from the mortgage balance.</p>')" aria-label="Help"><i class="fas fa-circle-question"></i></button>
+      <button type="button" class="text-[#00A89D] text-xl" onclick="RuoffApp.showHelp('Home value', '<p>Use a recent appraisal, online estimate, or a reasonable market value. This drives equity and loan-to-value (how much of the home is still financed).</p>')" aria-label="Help"><i class="fas fa-circle-question"></i></button>
     </div>
     <div class="flex justify-center items-baseline gap-1 my-4">
       <span class="text-3xl sm:text-4xl font-black">$</span>
@@ -133,15 +102,15 @@
     </div>
     <div class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
       <div class="glass rounded-xl p-4">
-        <div class="text-xs opacity-70">Current equity</div>
+        <div class="text-xs opacity-70">Your equity</div>
         <div id="equity" class="text-2xl font-bold pos number">$0</div>
       </div>
       <div class="glass rounded-xl p-4">
-        <div class="text-xs opacity-70">Current LTV</div>
+        <div class="text-xs opacity-70">How much is financed (LTV)</div>
         <div id="ltv" class="text-2xl font-bold number">0%</div>
       </div>
       <div class="glass rounded-xl p-4">
-        <div class="text-xs opacity-70">New equity</div>
+        <div class="text-xs opacity-70">Equity after refi</div>
         <div id="new-equity" class="text-2xl font-bold number">$0</div>
       </div>
       <div class="glass rounded-xl p-4">
@@ -151,7 +120,7 @@
     </div>
   </section>
 
-  <!-- Step 2: Current mortgage -->
+  <!-- Mortgage -->
   <section class="glass rounded-2xl p-5 sm:p-8">
     <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
       <h3 class="text-xl font-bold flex items-center"><span class="step-pill">2</span> Current mortgage</h3>
@@ -165,11 +134,11 @@
         <div id="summary-balance" class="text-xl sm:text-2xl font-black number">$0</div>
       </div>
       <div>
-        <div class="text-xs opacity-70">Total housing</div>
+        <div class="text-xs opacity-70">What you pay for housing</div>
         <div id="summary-total-pay" class="text-xl sm:text-2xl font-black pos number">$0</div>
       </div>
       <div>
-        <div class="text-xs opacity-70">P&amp;I only</div>
+        <div class="text-xs opacity-70">Loan only (P&amp;I)</div>
         <div id="summary-pi" class="text-xl sm:text-2xl font-black number">$0</div>
       </div>
       <div>
@@ -177,24 +146,24 @@
         <div id="summary-escrow" class="text-xl sm:text-2xl font-black number">$0</div>
       </div>
     </div>
-    <p class="text-xs opacity-60 mt-4">Current rate and years remaining (in Edit mortgage) drive true interest comparisons — not just the new loan.</p>
+    <p class="text-xs opacity-60 mt-4">Add your <strong>current rate</strong> and <strong>years remaining</strong> under Edit mortgage so we can compare interest honestly.</p>
   </section>
 
-  <!-- Step 3: Scenario -->
+  <!-- Scenario -->
   <section class="glass rounded-2xl p-5 sm:p-8">
     <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
-      <h3 class="text-xl font-bold flex items-center"><span class="step-pill">3</span> New refinance scenario</h3>
+      <h3 class="text-xl font-bold flex items-center"><span class="step-pill">3</span> Explore a refinance</h3>
       <button type="button" onclick="RuoffApp.openDebtsModal()" class="px-5 py-2.5 bg-gradient-to-r from-[#F15A29] to-[#ff6b3d] text-white rounded-xl text-sm font-semibold shadow">
-        <i class="fas fa-credit-card mr-1"></i> Manage debts
+        <i class="fas fa-credit-card mr-1"></i> Other debts
       </button>
     </div>
 
     <div class="flex flex-wrap gap-2 mb-6">
-      <button type="button" class="preset-btn" data-preset="rate-term" onclick="RuoffApp.applyPreset('rate-term')">Rate &amp; term</button>
+      <button type="button" class="preset-btn" data-preset="rate-term" onclick="RuoffApp.applyPreset('rate-term')">Similar loan, better rate</button>
       <button type="button" class="preset-btn" data-preset="lower-payment" onclick="RuoffApp.applyPreset('lower-payment')">Lower payment</button>
-      <button type="button" class="preset-btn" data-preset="shorten-term" onclick="RuoffApp.applyPreset('shorten-term')">Shorten term</button>
-      <button type="button" class="preset-btn" data-preset="debt-wipeout" onclick="RuoffApp.applyPreset('debt-wipeout')">Debt wipeout</button>
-      <button type="button" class="preset-btn" data-preset="cash-project" onclick="RuoffApp.applyPreset('cash-project')">Cash for project</button>
+      <button type="button" class="preset-btn" data-preset="shorten-term" onclick="RuoffApp.applyPreset('shorten-term')">Pay off faster</button>
+      <button type="button" class="preset-btn" data-preset="debt-wipeout" onclick="RuoffApp.applyPreset('debt-wipeout')">Pay off debts</button>
+      <button type="button" class="preset-btn" data-preset="cash-project" onclick="RuoffApp.applyPreset('cash-project')">Cash for a project</button>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -227,7 +196,7 @@
           <span class="prefix">$</span>
           <input id="closing-costs" type="number" value="6000" oninput="RuoffApp.liveUpdate()" class="input-field input-lg">
         </div>
-        <p class="text-xs opacity-50 mt-2 text-center">Editable — affects cash at closing &amp; break-even</p>
+        <p class="text-xs opacity-50 mt-2 text-center">Ask your LO for a tighter estimate</p>
       </div>
     </div>
 
@@ -236,32 +205,27 @@
       <span id="warning-text"></span>
     </div>
 
-    <div class="mt-4 flex flex-wrap items-end gap-4">
-      <div class="flex-1 min-w-[140px]">
-        <label class="block text-xs opacity-70 mb-1">Cash for project (preset)</label>
-        <div class="dollar-wrap">
-          <span class="prefix">$</span>
-          <input id="project-cash" type="number" value="30000" class="input-field" oninput="/* used by preset */">
-        </div>
+    <div class="mt-4">
+      <label class="block text-xs opacity-70 mb-1">Cash needed for a project (used by “Cash for a project” preset)</label>
+      <div class="dollar-wrap max-w-xs">
+        <span class="prefix">$</span>
+        <input id="project-cash" type="number" value="30000" class="input-field">
       </div>
     </div>
 
-    <!-- Before / After payments -->
     <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
       <div class="rounded-2xl p-5 bg-zinc-100 dark:bg-white/5 border border-zinc-200 dark:border-white/10">
-        <div class="text-xs font-semibold tracking-wide opacity-60 mb-2">BEFORE · TOTAL HOUSING</div>
-        <div id="summary-total-pay-dup" class="hidden"></div>
+        <div class="text-xs font-semibold tracking-wide opacity-60 mb-2">TODAY · HOUSING</div>
         <div class="text-3xl font-black number" id="before-housing-mirror">—</div>
-        <div class="text-sm opacity-70 mt-1">P&amp;I <span id="before-pi-mirror">—</span></div>
+        <div class="text-sm opacity-70 mt-1">Loan only <span id="before-pi-mirror">—</span></div>
       </div>
       <div class="rounded-2xl p-5 border-2 border-[#00A89D]/40 bg-teal-50/50 dark:bg-teal-900/20">
-        <div class="text-xs font-semibold tracking-wide opacity-60 mb-2">AFTER · EST. TOTAL HOUSING</div>
+        <div class="text-xs font-semibold tracking-wide opacity-60 mb-2">AFTER REFI · EST. HOUSING</div>
         <div id="new-housing-display" class="text-3xl font-black pos number">$0</div>
-        <div class="text-sm opacity-70 mt-1">P&amp;I <span id="new-pi-display" class="font-semibold number">$0</span> · includes taxes/ins/est. PMI</div>
+        <div class="text-sm opacity-70 mt-1">Loan only <span id="new-pi-display" class="font-semibold number">$0</span></div>
       </div>
     </div>
 
-    <!-- KPI cards -->
     <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="kpi-card glass rounded-2xl p-5 text-center" role="button" tabindex="0" onclick="RuoffApp.showCashFlowModal()" onkeydown="if(event.key==='Enter')RuoffApp.showCashFlowModal()">
         <div class="text-xs opacity-70 mb-1">Monthly cash-flow change</div>
@@ -269,7 +233,7 @@
         <div id="monthly-cashflow-hint" class="text-xs opacity-60 mt-2"></div>
       </div>
       <div class="kpi-card glass rounded-2xl p-5 text-center" role="button" tabindex="0" onclick="RuoffApp.showDebtsPaidModal()" onkeydown="if(event.key==='Enter')RuoffApp.showDebtsPaidModal()">
-        <div class="text-xs opacity-70 mb-1">Total debts paid off</div>
+        <div class="text-xs opacity-70 mb-1">Debts paid off</div>
         <div id="total-debts-paid" class="text-3xl font-black number">$0</div>
         <div class="text-xs opacity-60 mt-2">Mortgage + selected debts</div>
       </div>
@@ -287,46 +251,40 @@
 
     <div class="mt-4 glass rounded-2xl p-4 text-sm" id="interest-comparison"></div>
     <div id="half-savings-tip" class="hidden mt-3 text-sm glass rounded-2xl p-4 border border-emerald-400/30"></div>
-
     <div id="shorter-term-savings" class="mt-4 glass rounded-2xl p-5 text-center cursor-pointer" onclick="RuoffApp.showInterestModal()"></div>
   </section>
 
-  <!-- Generate -->
   <section>
     <button type="button" onclick="RuoffApp.generateSmartPlan()"
             class="group w-full py-8 sm:py-10 text-xl sm:text-2xl font-black tracking-tight
                    bg-gradient-to-r from-[#00A89D] via-[#F15A29] to-[#002B5C]
                    hover:brightness-110 rounded-2xl shadow-xl text-white
                    transition-all flex items-center justify-center gap-4 border border-white/20">
-      <span>Generate personalized Smart Plan</span>
+      <span>Create my personalized plan</span>
       <span class="text-3xl group-hover:rotate-12 transition-transform">✨</span>
     </button>
-    <p class="text-center text-xs opacity-60 mt-3">AI writes the narrative from your calculated numbers — it does not invent payments or savings.</p>
+    <p class="text-center text-xs opacity-60 mt-3">Estimates only — not an offer of credit. Your loan officer will verify pricing and eligibility.</p>
   </section>
 
-  <!-- Results -->
   <section id="results-area" class="hidden mt-4">
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4">
-      <h2 class="text-2xl font-bold">Smart Plan for <span id="results-client-name" class="text-[#00A89D]"></span></h2>
+      <h2 class="text-2xl font-bold">Your plan<span id="results-client-name" class="text-[#00A89D]"></span></h2>
+      <!-- name filled as ": Name" by app when present -->
       <div class="flex flex-wrap gap-2">
-        <button type="button" onclick="RuoffApp.showVisualSummary()" class="px-4 py-2.5 text-sm font-semibold bg-gradient-to-r from-[#00A89D] to-[#F15A29] text-white rounded-xl">Client visual</button>
-        <button type="button" onclick="RuoffApp.downloadAsWordDoc()" class="px-4 py-2.5 text-sm font-semibold bg-emerald-600 text-white rounded-xl"><i class="fas fa-file-word mr-1"></i> Word</button>
+        <button type="button" onclick="RuoffApp.downloadAsWordDoc()" class="px-4 py-2.5 text-sm font-semibold bg-emerald-600 text-white rounded-xl"><i class="fas fa-file-word mr-1"></i> Download</button>
         <button type="button" onclick="RuoffApp.copyFormattedPlan()" class="px-4 py-2.5 text-sm font-semibold bg-zinc-700 text-white rounded-xl"><i class="fas fa-copy mr-1"></i> Copy</button>
-        <button type="button" onclick="RuoffApp.draftInitialEmail()" class="px-4 py-2.5 text-sm font-semibold bg-gradient-to-r from-[#00A89D] via-[#F15A29] to-[#002B5C] text-white rounded-xl">Draft email</button>
+        <button type="button" onclick="RuoffApp.contactMyLO()" class="px-4 py-2.5 text-sm font-semibold bg-[#00A89D] text-white rounded-xl"><i class="fas fa-envelope mr-1"></i> Contact my LO</button>
       </div>
     </div>
     <div class="flex border-b border-zinc-200 dark:border-white/15 mb-4 overflow-x-auto">
-      <button type="button" onclick="RuoffApp.showTab(0)" class="tab-btn active px-5 py-3 text-sm font-medium">Executive Summary</button>
-      <button type="button" onclick="RuoffApp.showTab(1)" class="tab-btn px-5 py-3 text-sm font-medium">Scenario Comparison</button>
-      <button type="button" onclick="RuoffApp.showTab(2)" class="tab-btn px-5 py-3 text-sm font-medium">Recommended Plan</button>
-      <button type="button" onclick="RuoffApp.showTab(3)" class="tab-btn px-5 py-3 text-sm font-medium">Sales Scripts</button>
-      <button type="button" onclick="RuoffApp.showTab(4)" class="tab-btn px-5 py-3 text-sm font-medium">Follow-Up</button>
+      <button type="button" onclick="RuoffApp.showTab(0)" class="tab-btn active px-5 py-3 text-sm font-medium">Summary</button>
+      <button type="button" onclick="RuoffApp.showTab(1)" class="tab-btn px-5 py-3 text-sm font-medium">Comparison</button>
+      <button type="button" onclick="RuoffApp.showTab(2)" class="tab-btn px-5 py-3 text-sm font-medium">Recommended plan</button>
     </div>
     <div id="tab-content" class="glass rounded-2xl p-6 sm:p-8 min-h-[400px] prose dark:prose-invert max-w-none"></div>
   </section>
 </main>
 
-<!-- Sticky mobile bar -->
 <div class="sticky-results md:hidden px-4 py-3 flex items-center justify-between gap-3 shadow-2xl">
   <div class="text-sm">
     <div class="opacity-60 text-xs">Cash flow</div>
@@ -340,13 +298,11 @@
 </div>
 
 <footer class="max-w-6xl mx-auto px-4 sm:px-6 py-10 text-center text-sm leading-relaxed opacity-70 border-t border-zinc-200 dark:border-white/10 mt-6">
-  <p class="mb-3 text-xs"><strong>Estimates only.</strong> Figures are for educational discussion and are not a commitment to lend. Rates, costs, and eligibility are subject to underwriting and change without notice.</p>
-  Ruoff Mortgage Company, Inc., d/b/a Ruoff Mortgage, is an Indiana corporation.
-  For complete licensing information visit
-  <a href="http://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/141868" target="_blank" rel="noopener" class="text-[#00A89D] font-medium hover:underline">NMLS Consumer Access</a>.
-  Equal Housing Lender. NMLS#141868.
+  <p class="mb-3 text-xs"><strong>Estimates only.</strong> This tool is for education and discussion. It is not an offer for extension of credit or a commitment to lend. Information and rates are subject to change without notice.</p>
+  Ruoff Mortgage Company, Inc., d/b/a Ruoff Mortgage. Equal Housing Lender. NMLS#141868.
+  <a href="http://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/141868" target="_blank" rel="noopener" class="text-[#00A89D] font-medium hover:underline">Licensing</a>
   <p id="app-version" class="mt-6 text-xs font-mono opacity-80 tracking-wide">
-    Ruoff Smart Savings Calculator · LO · v2.0.0 · 2026-07-16
+    Ruoff Smart Savings Calculator · Borrower · v2.0.0 · 2026-07-16
   </p>
 </footer>
 
@@ -354,7 +310,7 @@
 <div id="mortgage-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[300] p-4" onclick="if(event.target===this)RuoffApp.closeMortgageModal()">
   <div class="modal-enter glass max-w-2xl w-full rounded-2xl overflow-hidden flex flex-col max-h-[92vh]" onclick="event.stopPropagation()">
     <div class="px-6 py-4 border-b border-white/10 flex justify-between items-center">
-      <h3 class="text-xl font-bold">Current mortgage details</h3>
+      <h3 class="text-xl font-bold">Your mortgage details</h3>
       <button type="button" onclick="RuoffApp.closeMortgageModal()" class="text-2xl opacity-60 hover:opacity-100">×</button>
     </div>
     <div class="flex-1 overflow-y-auto p-6 space-y-5">
@@ -378,11 +334,11 @@
         <input id="closing-date" type="date" class="input-field">
       </div>
       <div>
-        <label class="block text-xs opacity-70 mb-1">Total monthly payment (to lender)</label>
+        <label class="block text-xs opacity-70 mb-1">Total monthly payment (what you send the lender)</label>
         <div class="dollar-wrap"><span class="prefix">$</span><input id="total-payment" type="number" class="input-field input-lg" oninput="RuoffApp.updateMortgageModal()"></div>
         <label class="flex items-center gap-2 mt-3 text-sm cursor-pointer">
           <input type="checkbox" id="escrow-included" checked onchange="RuoffApp.updateMortgageModal()" class="w-5 h-5 accent-[#00A89D]">
-          Taxes &amp; insurance included in this payment
+          Taxes &amp; insurance are included in this payment
         </label>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -410,23 +366,23 @@
   </div>
 </div>
 
-<!-- Debts modal -->
+<!-- Debts -->
 <div id="debts-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[400] p-4" onclick="if(event.target===this)RuoffApp.closeDebtsModal()">
   <div class="modal-enter glass max-w-2xl w-full rounded-2xl overflow-hidden flex flex-col max-h-[92vh]" onclick="event.stopPropagation()">
     <div class="px-6 py-4 border-b border-white/10 flex justify-between items-start gap-3">
       <div>
-        <h3 class="text-xl font-bold">Manage debts</h3>
-        <p class="text-sm opacity-70">Toggle which debts to pay off with the refinance</p>
+        <h3 class="text-xl font-bold">Other debts</h3>
+        <p class="text-sm opacity-70">Include debts you might pay off with a refinance</p>
       </div>
       <button type="button" onclick="RuoffApp.closeDebtsModal()" class="text-2xl opacity-60">×</button>
     </div>
     <div class="grid grid-cols-2 gap-3 px-6 py-3 border-b border-white/10 text-center">
-      <div><div class="text-xs opacity-60">Monthly freed</div><div id="modal-total-monthly" class="text-xl font-black pos">$0</div></div>
-      <div><div class="text-xs opacity-60">Payoff total</div><div id="modal-total-payoff" class="text-xl font-black" style="color:#F15A29">$0</div></div>
+      <div><div class="text-xs opacity-60">Monthly payments</div><div id="modal-total-monthly" class="text-xl font-black pos">$0</div></div>
+      <div><div class="text-xs opacity-60">Balances</div><div id="modal-total-payoff" class="text-xl font-black" style="color:#F15A29">$0</div></div>
     </div>
     <div id="debts-list" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
     <div class="p-4 border-t border-white/10 flex flex-wrap gap-2 justify-between">
-      <button type="button" onclick="RuoffApp.clearAllData()" class="text-red-500 text-sm font-medium"><i class="fas fa-trash mr-1"></i> Reset all</button>
+      <button type="button" onclick="RuoffApp.clearAllData()" class="text-red-500 text-sm font-medium">Reset calculator</button>
       <div class="flex gap-2">
         <button type="button" onclick="RuoffApp.openAddDebtModal()" class="px-4 py-2 bg-gradient-to-r from-[#00A89D] to-[#F15A29] text-white rounded-xl text-sm font-semibold"><i class="fas fa-plus mr-1"></i> Add debt</button>
         <button type="button" onclick="RuoffApp.closeDebtsModal()" class="px-5 py-2 border border-zinc-300 dark:border-white/20 rounded-xl text-sm font-medium">Done</button>
@@ -435,7 +391,6 @@
   </div>
 </div>
 
-<!-- Add debt -->
 <div id="add-debt-modal" class="hidden fixed inset-0 bg-black/85 flex items-center justify-center z-[600] p-4" onclick="if(event.target===this)RuoffApp.closeAddDebtModal()">
   <div class="modal-enter glass max-w-lg w-full rounded-2xl overflow-hidden" onclick="event.stopPropagation()">
     <div class="px-6 py-4 border-b border-white/10 flex justify-between">
@@ -471,7 +426,7 @@
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="block text-xs opacity-70 mb-1">Rate % <span class="opacity-50">(for interest avoided)</span></label>
+          <label class="block text-xs opacity-70 mb-1">Interest rate %</label>
           <input id="new-debt-rate" type="number" step="0.1" class="input-field text-center" value="0">
         </div>
         <div>
@@ -487,7 +442,6 @@
   </div>
 </div>
 
-<!-- Help -->
 <div id="help-modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[500] p-4" onclick="if(event.target===this)RuoffApp.closeHelp()">
   <div class="modal-enter glass max-w-md w-full rounded-2xl p-6" onclick="event.stopPropagation()">
     <div class="flex justify-between mb-3">
@@ -498,7 +452,6 @@
   </div>
 </div>
 
-<!-- Detail breakdown -->
 <div id="detail-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[500] p-4" onclick="if(event.target===this)RuoffApp.closeDetailModal()">
   <div class="modal-enter glass max-w-lg w-full rounded-2xl p-6 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
     <div class="flex justify-between mb-4">
@@ -510,32 +463,22 @@
   </div>
 </div>
 
-<!-- Loading -->
 <div id="loading-modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[999]">
   <div class="glass max-w-md w-full mx-4 rounded-2xl p-10 text-center">
     <img src="https://2759433.fs1.hubspotusercontent-na1.net/hubfs/2759433/Ruoff_Mortgage_FC-Jan-18-2026-05-19-19-8281-AM.png" alt="" class="h-16 mx-auto mb-6">
     <div class="w-12 h-12 border-4 border-[#00A89D]/30 border-t-[#00A89D] rounded-full animate-spin mx-auto mb-6"></div>
-    <h3 class="text-xl font-bold mb-2">Building your Smart Plan…</h3>
-    <p class="text-sm opacity-70">Using your calculated numbers as the source of truth</p>
+    <h3 class="text-xl font-bold mb-2">Building your personalized plan…</h3>
+    <p class="text-sm opacity-70">Grounded in the numbers you entered</p>
   </div>
 </div>
 
-<div id="email-loading-modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[999]">
-  <div class="glass max-w-md w-full mx-4 rounded-2xl p-10 text-center">
-    <div class="w-12 h-12 border-4 border-[#00A89D]/30 border-t-[#00A89D] rounded-full animate-spin mx-auto mb-6"></div>
-    <h3 class="text-xl font-bold mb-2">Drafting outreach email…</h3>
-  </div>
-</div>
+<!-- email modal unused on borrower but referenced safely -->
+<div id="email-loading-modal" class="hidden"></div>
 
-<script>
-  window.APP_MODE = 'lo';
-  // Keep before/after housing in sync via MutationObserver-like liveUpdate hook
-  const _origLive = null;
-</script>
+<script>window.APP_MODE = 'borrower';</script>
 <script src="js/calculator-core.js"></script>
 <script src="js/app.js"></script>
 <script>
-  // Mirror before housing into the before card (summary fields already updated)
   (function () {
     const hook = () => {
       const pay = document.getElementById('summary-total-pay');
@@ -545,9 +488,8 @@
       if (pay && before) before.textContent = pay.textContent;
       if (pi && beforePi) beforePi.textContent = pi.textContent;
     };
-    const obs = new MutationObserver(hook);
     const el = document.getElementById('summary-total-pay');
-    if (el) obs.observe(el, { childList: true, characterData: true, subtree: true });
+    if (el) new MutationObserver(hook).observe(el, { childList: true, characterData: true, subtree: true });
     setTimeout(hook, 100);
     setInterval(hook, 500);
   })();
