@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config = { darkMode: 'class' }</script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body class="mode-guided min-h-screen pb-8 text-zinc-900 dark:text-white">
@@ -389,6 +390,16 @@
     <div id="half-savings-tip" class="hidden mt-3 text-sm glass rounded-2xl p-4 border border-emerald-400/30"></div>
 
     <div id="shorter-term-savings" class="mt-4 glass rounded-2xl p-5 text-center cursor-pointer" role="button" tabindex="0" onclick="RuoffApp.showInterestModal()" onkeydown="if(event.key==='Enter')RuoffApp.showInterestModal()"></div>
+
+    <div class="scenario-compare-panel glass glass-hero rounded-[1.75rem] p-5 mt-6">
+      <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
+        <div>
+          <div class="label-caps">Compare scenarios</div>
+          <h3 class="text-lg font-bold">Save A / B and load side-by-side</h3>
+        </div>
+      </div>
+      <div id="scenario-compare"></div>
+    </div>
   </section>
 
   <!-- Generate -->
@@ -414,6 +425,12 @@
         <span class="live-preview-chip mb-0">Break-even <strong id="plan-be">—</strong></span>
       </div>
     </div>
+    <div class="flex flex-wrap gap-2 mb-4 no-print">
+      <button type="button" onclick="RuoffApp.printOnePager()" class="btn-ghost text-sm py-2.5"><i class="fas fa-print mr-1"></i> Print / PDF one-pager</button>
+      <button type="button" onclick="RuoffApp.shareSnapshot()" class="btn-ghost text-sm py-2.5"><i class="fas fa-share-nodes mr-1"></i> Share snapshot</button>
+      <button type="button" onclick="RuoffApp.saveScenarioSlot('A')" class="btn-ghost text-sm py-2.5">Save as A</button>
+      <button type="button" onclick="RuoffApp.saveScenarioSlot('B')" class="btn-ghost text-sm py-2.5">Save as B</button>
+    </div>
     <button type="button" data-generate-btn onclick="RuoffApp.generateSmartPlan()" class="cta-generate">
       <span>Generate personalized Smart Plan</span>
       <span aria-hidden="true">✨</span>
@@ -427,6 +444,7 @@
       <h2 class="text-2xl font-bold">Smart Plan for <span id="results-client-name" class="text-[#00A89D]"></span></h2>
       <div class="flex flex-wrap gap-2">
         <button type="button" onclick="RuoffApp.showVisualSummary()" class="px-4 py-2.5 text-sm font-semibold bg-gradient-to-r from-[#00A89D] to-[#F15A29] text-white rounded-xl">Client visual</button>
+        <button type="button" onclick="RuoffApp.printOnePager()" class="px-4 py-2.5 text-sm font-semibold bg-white/10 border border-white/20 rounded-xl"><i class="fas fa-print mr-1"></i> PDF</button>
         <button type="button" onclick="RuoffApp.downloadAsWordDoc()" class="px-4 py-2.5 text-sm font-semibold bg-emerald-600 text-white rounded-xl"><i class="fas fa-file-word mr-1"></i> Word</button>
         <button type="button" onclick="RuoffApp.copyFormattedPlan()" class="px-4 py-2.5 text-sm font-semibold bg-zinc-700 text-white rounded-xl"><i class="fas fa-copy mr-1"></i> Copy</button>
         <button type="button" onclick="RuoffApp.draftInitialEmail()" class="px-4 py-2.5 text-sm font-semibold bg-gradient-to-r from-[#00A89D] via-[#F15A29] to-[#002B5C] text-white rounded-xl">Draft email</button>
@@ -485,10 +503,12 @@
   <a href="http://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/141868" target="_blank" rel="noopener" class="text-[#00A89D] font-medium hover:underline">NMLS Consumer Access</a>.
   Equal Housing Lender. NMLS#141868.
   <p id="app-version" class="mt-6 text-xs font-mono opacity-80 tracking-wide">
-    Ruoff Smart Savings Calculator · LO · v3.1.0 · 2026-07-16
+    Ruoff Smart Savings Calculator · LO · v3.2.0 · 2026-07-16
   </p>
 </footer>
 </div><!-- /.app-shell -->
+
+<div id="print-one-pager" class="hidden print-only" aria-hidden="true"></div>
 
 <!-- Mortgage modal -->
 <div id="mortgage-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[300] p-4">

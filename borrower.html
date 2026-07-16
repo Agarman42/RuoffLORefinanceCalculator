@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config = { darkMode: 'class' }</script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body class="mode-guided min-h-screen pb-8 text-zinc-900 dark:text-white">
@@ -318,7 +319,13 @@
     <div class="mt-4 glass rounded-2xl p-4 text-sm" id="interest-comparison" role="button" tabindex="0" onclick="RuoffApp.showInterestModal()" onkeydown="if(event.key==='Enter')RuoffApp.showInterestModal()"></div>
     <div id="half-savings-tip" class="hidden mt-3 text-sm glass rounded-2xl p-4 border border-emerald-400/30"></div>
     <div id="shorter-term-savings" class="mt-4 glass rounded-2xl p-5 text-center cursor-pointer" role="button" tabindex="0" onclick="RuoffApp.showInterestModal()" onkeydown="if(event.key==='Enter')RuoffApp.showInterestModal()"></div>
-  </section>
+  
+    <div class="scenario-compare-panel glass glass-hero rounded-[1.75rem] p-5 mt-6">
+      <div class="label-caps">Compare options</div>
+      <h3 class="text-lg font-bold mb-3">Save scenarios to compare</h3>
+      <div id="scenario-compare"></div>
+    </div>
+</section>
 
   <section id="section-plan" class="wizard-panel" data-wizard-step="5">
     <div class="wizard-only glass glass-hero rounded-[1.75rem] p-6 sm:p-8 mb-6">
@@ -397,7 +404,7 @@
   Ruoff Mortgage Company, Inc., d/b/a Ruoff Mortgage. Equal Housing Lender. NMLS#141868.
   <a href="http://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/141868" target="_blank" rel="noopener" class="text-[#00A89D] font-medium hover:underline">Licensing</a>
   <p id="app-version" class="mt-6 text-xs font-mono opacity-80 tracking-wide">
-    Ruoff Smart Savings Calculator · Borrower · v3.1.0 · 2026-07-16
+    Ruoff Smart Savings Calculator · Borrower · v3.2.0 · 2026-07-16
   </p>
 </footer>
 
@@ -595,5 +602,6 @@
 <script src="js/calculator-core.js"></script>
 <script src="js/app.js"></script>
 </div><!-- /.app-shell -->
+<div id="print-one-pager" class="hidden print-only" aria-hidden="true"></div>
 </body>
 </html>

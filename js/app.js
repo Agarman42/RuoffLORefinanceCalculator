@@ -18,6 +18,7 @@
   const THEME_KEY = 'ruoffTheme';
   const WIZARD_STEP_KEY = 'ruoff.wizardStep.' + MODE;
   const MAX_WIZARD_REACHED_KEY = 'ruoff.wizardMax.' + MODE;
+  const SCENARIOS_KEY = 'ruoff.scenarios.' + MODE;
 
   /**
    * Grok proxy — API key stays on Render (same pattern as LO / Realtor coaching tools).
@@ -100,6 +101,9 @@
   let wizardStep = 0;
   let wizardMaxReached = 0;
   const animState = {}; // id -> last numeric value for count-up
+  let prevCashFlowSign = null; // for confetti on flip to positive
+  let confettiCooldownUntil = 0;
+  let savedScenarios = []; // A/B compare slots
 
   const WIZARD_STEPS = MODE === 'lo'
     ? [
@@ -575,7 +579,42 @@
     updateWizardPreviews(scenario);
     syncTermSegmented();
     updateStepTip(scenario);
+    maybeCelebrateWin(scenario);
+    renderScenarioCompare();
     saveToStorage();
+  }
+
+  function maybeCelebrateWin(scenario) {
+    const cf = scenario.monthlyCashFlowChange;
+    const sign = cf > 25 ? 1 : cf < -25 ? -1 : 0;
+    if (prevCashFlowSign === null) {
+      prevCashFlowSign = sign;
+      return;
+    }
+    // Fire once when flipping into meaningful positive cash flow
+    if (sign === 1 && prevCashFlowSign !== 1 && Date.now() > confettiCooldownUntil) {
+      confettiCooldownUntil = Date.now() + 8000;
+      fireWinConfetti();
+      toast('Nice — this scenario improves monthly cash flow');
+    }
+    prevCashFlowSign = sign;
+  }
+
+  function fireWinConfetti() {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (typeof confetti !== 'function') return;
+    const colors = ['#00A89D', '#F15A29', '#002B5C', '#34d399', '#ffffff'];
+    confetti({
+      particleCount: 80,
+      spread: 70,
+      origin: { y: 0.65 },
+      colors: colors,
+      disableForReducedMotion: true
+    });
+    setTimeout(function () {
+      confetti({ particleCount: 40, angle: 60, spread: 55, origin: { x: 0, y: 0.7 }, colors: colors });
+      confetti({ particleCount: 40, angle: 120, spread: 55, origin: { x: 1, y: 0.7 }, colors: colors });
+    }, 180);
   }
 
   function updateDockMetrics(scenario, cf) {
@@ -1857,6 +1896,7 @@
       setActiveNav('plan');
       $('results-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
       toast('Smart Plan ready');
+      celebrateGenerateSuccess();
     } catch (e) {
       console.error(e);
       // Offline / API-down fallback: deterministic plan from numbers
@@ -1866,6 +1906,7 @@
       $('results-area').classList.remove('hidden');
       setActiveNav('plan');
       toast('AI unavailable — showing calculated plan instead', 'warn');
+      celebrateGenerateSuccess();
     } finally {
       generatingPlan = false;
       if (modal) setModalOpen('loading-modal', false);
@@ -2277,6 +2318,8 @@
     updateDebtSummaryStrip();
     initMiniNav();
     syncTermSegmented();
+    loadSavedScenarios();
+    renderScenarioCompare();
 
     // Experience mode (guided wizard default) + resume step
     let savedMode = 'guided';
@@ -2348,6 +2391,338 @@
     toast('Starting from the beginning');
   }
 
+  // ─── Multi-scenario A/B compare ──────────────────────────
+  function loadSavedScenarios() {
+    try {
+      const raw = localStorage.getItem(SCENARIOS_KEY);
+      savedScenarios = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(savedScenarios)) savedScenarios = [];
+    } catch (e) {
+      savedScenarios = [];
+    }
+  }
+
+  function persistScenarios() {
+    try { localStorage.setItem(SCENARIOS_KEY, JSON.stringify(savedScenarios.slice(0, 4))); } catch (e) {}
+  }
+
+  function captureScenarioSnapshot(label) {
+    if (!lastScenario) liveUpdate();
+    readStateFromDom();
+    return {
+      id: 's_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+      label: label || ('Scenario ' + (savedScenarios.length + 1)),
+      savedAt: new Date().toISOString(),
+      inputs: {
+        homeValue: state.homeValue,
+        currentBalance: state.currentBalance,
+        currentRate: state.currentRate,
+        yearsRemaining: state.yearsRemaining,
+        totalPayment: state.totalPayment,
+        taxes: state.taxes,
+        insurance: state.insurance,
+        pmi: state.pmi,
+        escrowIncluded: state.escrowIncluded,
+        newLoanAmount: state.newLoanAmount,
+        newRate: state.newRate,
+        newTerm: state.newTerm,
+        closingCosts: state.closingCosts,
+        debts: JSON.parse(JSON.stringify(state.debts || []))
+      },
+      metrics: {
+        monthlyCashFlowChange: lastScenario.monthlyCashFlowChange,
+        newHousing: lastScenario.newHousing,
+        oldHousing: lastScenario.oldHousing,
+        cashAtClosing: lastScenario.cashAtClosing,
+        isCashBack: lastScenario.isCashBack,
+        breakEvenMonths: lastScenario.breakEvenMonths,
+        totalDebtsPaidOff: lastScenario.totalDebtsPaidOff,
+        newPi: lastScenario.newPi,
+        mortgageInterestSavings: lastScenario.mortgageInterest && lastScenario.mortgageInterest.savings,
+        newLtv: lastScenario.newLtv
+      }
+    };
+  }
+
+  function saveScenarioSlot(slot) {
+    // slot: 'A' | 'B' | null (auto)
+    const label = slot === 'A' || slot === 'B'
+      ? slot
+      : prompt('Name this scenario', 'Scenario ' + (savedScenarios.length + 1));
+    if (label === null) return;
+    const snap = captureScenarioSnapshot(String(label).trim() || 'Scenario');
+    // Replace existing same label A/B
+    if (snap.label === 'A' || snap.label === 'B') {
+      savedScenarios = savedScenarios.filter(function (s) { return s.label !== snap.label; });
+    }
+    savedScenarios.unshift(snap);
+    savedScenarios = savedScenarios.slice(0, 4);
+    persistScenarios();
+    renderScenarioCompare();
+    toast('Saved “' + snap.label + '”');
+  }
+
+  function loadScenarioById(id) {
+    const snap = savedScenarios.find(function (s) { return s.id === id; });
+    if (!snap) return;
+    const i = snap.inputs;
+    state.homeValue = i.homeValue;
+    state.currentBalance = i.currentBalance;
+    state.currentRate = i.currentRate;
+    state.yearsRemaining = i.yearsRemaining;
+    state.totalPayment = i.totalPayment;
+    state.taxes = i.taxes;
+    state.insurance = i.insurance;
+    state.pmi = i.pmi;
+    state.escrowIncluded = i.escrowIncluded;
+    state.newLoanAmount = i.newLoanAmount;
+    state.newRate = i.newRate;
+    state.newTerm = i.newTerm;
+    state.closingCosts = i.closingCosts;
+    state.debts = i.debts || [];
+    hydrateDomFromState();
+    ensureMortgageDebt();
+    liveUpdate();
+    toast('Loaded “' + snap.label + '”');
+    if (experienceMode === 'guided') goToWizardStep(4); // scenario step
+  }
+
+  function deleteScenario(id) {
+    savedScenarios = savedScenarios.filter(function (s) { return s.id !== id; });
+    persistScenarios();
+    renderScenarioCompare();
+  }
+
+  function clearScenarios() {
+    if (!savedScenarios.length) return;
+    if (!confirm('Clear all saved scenarios?')) return;
+    savedScenarios = [];
+    persistScenarios();
+    renderScenarioCompare();
+    toast('Scenarios cleared');
+  }
+
+  function renderScenarioCompare() {
+    const el = $('scenario-compare');
+    if (!el) return;
+    if (!savedScenarios.length) {
+      el.innerHTML =
+        '<div class="scenario-compare-empty">' +
+        '<p class="text-sm opacity-70 mb-3">Save scenarios to compare side-by-side (great for client meetings).</p>' +
+        '<div class="flex flex-wrap gap-2">' +
+        '<button type="button" class="size-loan-btn" onclick="RuoffApp.saveScenarioSlot(\'A\')">Save as A</button>' +
+        '<button type="button" class="size-loan-btn" onclick="RuoffApp.saveScenarioSlot(\'B\')">Save as B</button>' +
+        '<button type="button" class="btn-ghost text-sm py-2" onclick="RuoffApp.saveScenarioSlot()">Save named…</button>' +
+        '</div></div>';
+      return;
+    }
+
+    const current = lastScenario ? {
+      label: 'Current',
+      metrics: {
+        monthlyCashFlowChange: lastScenario.monthlyCashFlowChange,
+        newHousing: lastScenario.newHousing,
+        cashAtClosing: lastScenario.cashAtClosing,
+        isCashBack: lastScenario.isCashBack,
+        breakEvenMonths: lastScenario.breakEvenMonths,
+        totalDebtsPaidOff: lastScenario.totalDebtsPaidOff,
+        newPi: lastScenario.newPi,
+        newLtv: lastScenario.newLtv
+      },
+      inputs: { newLoanAmount: state.newLoanAmount, newRate: state.newRate, newTerm: state.newTerm }
+    } : null;
+
+    const cols = (current ? [current] : []).concat(savedScenarios.slice(0, 3));
+    let head = '<th></th>' + cols.map(function (c) {
+      return '<th>' + escapeHtml(c.label) + '</th>';
+    }).join('');
+
+    function row(label, fn) {
+      return '<tr><td class="sc-metric">' + label + '</td>' +
+        cols.map(function (c) { return '<td class="number">' + fn(c) + '</td>'; }).join('') +
+        '</tr>';
+    }
+
+    const table =
+      '<div class="flex flex-wrap gap-2 mb-3">' +
+      '<button type="button" class="size-loan-btn" onclick="RuoffApp.saveScenarioSlot(\'A\')">Save as A</button>' +
+      '<button type="button" class="size-loan-btn" onclick="RuoffApp.saveScenarioSlot(\'B\')">Save as B</button>' +
+      '<button type="button" class="btn-ghost text-sm py-2" onclick="RuoffApp.saveScenarioSlot()">Save named…</button>' +
+      '<button type="button" class="btn-ghost text-sm py-2" onclick="RuoffApp.clearScenarios()">Clear</button>' +
+      '</div>' +
+      '<div class="scenario-table-wrap"><table class="scenario-table"><thead><tr>' + head + '</tr></thead><tbody>' +
+      row('Loan', function (c) {
+        const amt = c.inputs ? c.inputs.newLoanAmount : (c.metrics && c.metrics.newLoanAmount);
+        const rate = c.inputs ? c.inputs.newRate : '';
+        const term = c.inputs ? c.inputs.newTerm : '';
+        if (c.inputs) return money(c.inputs.newLoanAmount) + '<div class="sc-sub">' + c.inputs.newRate + '% · ' + c.inputs.newTerm + 'yr</div>';
+        return '—';
+      }) +
+      row('New housing', function (c) { return money(c.metrics.newHousing); }) +
+      row('Cash-flow Δ', function (c) {
+        const v = c.metrics.monthlyCashFlowChange;
+        const cls = v > 0 ? 'pos' : v < 0 ? 'neg' : '';
+        return '<span class="' + cls + '">' + (v > 0 ? '+' : '') + money(v) + '</span>';
+      }) +
+      row('Cash at close', function (c) {
+        const v = c.metrics.cashAtClosing;
+        return (c.metrics.isCashBack || v >= 0 ? '' : 'Due ') + money(Math.abs(v));
+      }) +
+      row('Break-even', function (c) {
+        return c.metrics.breakEvenMonths != null ? c.metrics.breakEvenMonths + ' mo' : 'N/A';
+      }) +
+      row('Debts paid', function (c) { return money(c.metrics.totalDebtsPaidOff); }) +
+      row('New LTV', function (c) { return (c.metrics.newLtv != null ? c.metrics.newLtv + '%' : '—'); }) +
+      '</tbody></table></div>';
+
+    const cards = savedScenarios.map(function (s) {
+      const m = s.metrics;
+      return '<div class="scenario-card glass">' +
+        '<div class="flex justify-between items-start gap-2">' +
+        '<div><div class="font-bold">' + escapeHtml(s.label) + '</div>' +
+        '<div class="text-xs opacity-60">' + money(s.inputs.newLoanAmount) + ' @ ' + s.inputs.newRate + '% / ' + s.inputs.newTerm + 'yr</div></div>' +
+        '<div class="flex gap-1">' +
+        '<button type="button" class="debt-action-btn" data-load-sc="' + s.id + '">Load</button>' +
+        '<button type="button" class="debt-action-btn debt-action-danger" data-del-sc="' + s.id + '"><i class="fas fa-trash"></i></button>' +
+        '</div></div>' +
+        '<div class="grid grid-cols-2 gap-2 mt-3 text-sm">' +
+        '<div>Cash flow<br><strong class="number ' + (m.monthlyCashFlowChange > 0 ? 'pos' : m.monthlyCashFlowChange < 0 ? 'neg' : '') + '">' +
+        (m.monthlyCashFlowChange > 0 ? '+' : '') + money(m.monthlyCashFlowChange) + '</strong></div>' +
+        '<div>Housing<br><strong class="number">' + money(m.newHousing) + '</strong></div>' +
+        '</div></div>';
+    }).join('');
+
+    el.innerHTML = table + '<div class="scenario-cards mt-4">' + cards + '</div>';
+    el.querySelectorAll('[data-load-sc]').forEach(function (btn) {
+      btn.addEventListener('click', function () { loadScenarioById(btn.getAttribute('data-load-sc')); });
+    });
+    el.querySelectorAll('[data-del-sc]').forEach(function (btn) {
+      btn.addEventListener('click', function () { deleteScenario(btn.getAttribute('data-del-sc')); });
+    });
+  }
+
+  // ─── Print / PDF one-pager + share ───────────────────────
+  function buildOnePagerHtml() {
+    if (!lastScenario) liveUpdate();
+    const s = lastScenario;
+    const client = collectClient();
+    const brand = state.branding || {};
+    const lo = MODE === 'borrower' ? state.loContact : brand;
+    const cf = s.monthlyCashFlowChange;
+    const cashLabel = s.cashAtClosing === 0 ? 'Even at closing' : (s.isCashBack ? 'Est. cash back' : 'Est. cash to close');
+    const debts = (state.debts || []).filter(function (d) { return d.payOff; });
+    const debtRows = debts.map(function (d) {
+      return '<tr><td>' + escapeHtml(d.name) + '</td><td class="num">' + money(d.bal) + '</td><td class="num">' + money(d.pay) + '/mo</td></tr>';
+    }).join('') || '<tr><td colspan="3">Mortgage only</td></tr>';
+
+    return (
+      '<div class="onepager">' +
+      '<header class="op-header">' +
+      '<div><div class="op-brand">Ruoff Mortgage</div>' +
+      '<h1>Smart Savings Snapshot</h1>' +
+      '<p class="op-sub">Prepared for ' + escapeHtml(client.clientName || 'Client') +
+      (lo && lo.name ? ' · ' + escapeHtml(lo.name) : '') +
+      (lo && lo.nmls ? ' · NMLS ' + escapeHtml(lo.nmls) : '') +
+      '</p></div>' +
+      '<div class="op-date">' + new Date().toLocaleDateString() + '</div>' +
+      '</header>' +
+      '<section class="op-hero">' +
+      '<div class="op-before"><div class="op-label">Today</div><div class="op-big">' + money(s.oldHousing) + '</div><div class="op-muted">Total housing · P&amp;I ' + money(s.oldPi) + '</div></div>' +
+      '<div class="op-arrow">→</div>' +
+      '<div class="op-after"><div class="op-label">Proposed</div><div class="op-big teal">' + money(s.newHousing) + '</div><div class="op-muted">Est. housing · P&amp;I ' + money(s.newPi) + '</div></div>' +
+      '</section>' +
+      '<section class="op-kpis">' +
+      '<div><div class="op-label">Cash-flow change</div><div class="op-kpi ' + (cf > 0 ? 'teal' : cf < 0 ? 'red' : '') + '">' + (cf > 0 ? '+' : '') + money(cf) + '</div></div>' +
+      '<div><div class="op-label">' + cashLabel + '</div><div class="op-kpi orange">' + money(Math.abs(s.cashAtClosing)) + '</div></div>' +
+      '<div><div class="op-label">Break-even</div><div class="op-kpi">' + (s.breakEvenMonths != null ? s.breakEvenMonths + ' months' : 'N/A') + '</div></div>' +
+      '<div><div class="op-label">Debts paid off</div><div class="op-kpi">' + money(s.totalDebtsPaidOff) + '</div></div>' +
+      '</section>' +
+      '<section class="op-grid">' +
+      '<div><h3>Home</h3><p>Value ' + money(s.homeValue) + '<br>Equity ' + money(s.equity) + ' · LTV ' + s.ltv + '%<br>New LTV ' + s.newLtv + '% · Equity ' + money(s.newEquity) + '</p></div>' +
+      '<div><h3>Proposed loan</h3><p>' + money(s.newLoanAmount) + ' at ' + s.newRate + '% for ' + s.newTerm + ' years<br>Closing costs (est.) ' + money(s.closingCosts) + '</p></div>' +
+      '</section>' +
+      '<section><h3>Debts included in payoff</h3>' +
+      '<table class="op-table"><thead><tr><th>Debt</th><th>Balance</th><th>Payment</th></tr></thead><tbody>' + debtRows + '</tbody></table></section>' +
+      (s.mortgageInterest
+        ? '<section><h3>Interest vs keep current loan</h3><p class="' + (s.mortgageInterest.savings >= 0 ? 'teal' : 'red') + '">' +
+          money(Math.abs(s.mortgageInterest.savings)) + (s.mortgageInterest.savings >= 0 ? ' less' : ' more') +
+          ' interest over the remaining life (estimate).</p></section>'
+        : '') +
+      (s.halfSavingsPaydown
+        ? '<section><h3>Optional: apply half of savings to principal</h3><p>About ' + money(s.halfSavingsPaydown.extraMonthly) +
+          '/mo could finish ~' + s.halfSavingsPaydown.yearsSaved + ' years sooner and save ~' +
+          money(s.halfSavingsPaydown.interestSavedVsBaseline) + ' more interest.</p></section>'
+        : '') +
+      '<footer class="op-foot">Estimates only. Not a commitment to lend. Rates, costs, and eligibility subject to underwriting and change. ' +
+      'Ruoff Mortgage · NMLS#141868' +
+      (lo && lo.cell ? ' · ' + escapeHtml(lo.cell) : '') +
+      (lo && lo.email ? ' · ' + escapeHtml(lo.email) : '') +
+      '</footer></div>'
+    );
+  }
+
+  function printOnePager() {
+    if (!lastScenario) liveUpdate();
+    const root = $('print-one-pager');
+    if (!root) {
+      toast('Print view unavailable', 'error');
+      return;
+    }
+    root.innerHTML = buildOnePagerHtml();
+    root.classList.remove('hidden');
+    document.body.classList.add('printing-onepager');
+    setTimeout(function () {
+      window.print();
+      setTimeout(function () {
+        document.body.classList.remove('printing-onepager');
+        root.classList.add('hidden');
+      }, 300);
+    }, 100);
+  }
+
+  function shareSnapshot() {
+    if (!lastScenario) liveUpdate();
+    const s = lastScenario;
+    const client = collectClient();
+    const cf = s.monthlyCashFlowChange;
+    const text =
+      'Ruoff Smart Savings Snapshot' + (client.clientName ? ' — ' + client.clientName : '') + '\n' +
+      'Today housing: ' + money(s.oldHousing) + '\n' +
+      'Proposed housing: ' + money(s.newHousing) + '\n' +
+      'Cash-flow change: ' + (cf > 0 ? '+' : '') + money(cf) + '\n' +
+      (s.isCashBack ? 'Cash back: ' : 'Cash to close: ') + money(Math.abs(s.cashAtClosing)) + '\n' +
+      'Break-even: ' + (s.breakEvenMonths != null ? s.breakEvenMonths + ' months' : 'N/A') + '\n' +
+      'Loan: ' + money(s.newLoanAmount) + ' @ ' + s.newRate + '% / ' + s.newTerm + ' years\n' +
+      '(Estimates only — not a commitment to lend)';
+
+    if (navigator.share) {
+      navigator.share({ title: 'Ruoff Smart Savings Snapshot', text: text }).catch(function () {
+        copyText(text);
+      });
+    } else {
+      copyText(text);
+    }
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        toast('Snapshot copied — paste into email or text');
+      }).catch(function () {
+        prompt('Copy this snapshot:', text);
+      });
+    } else {
+      prompt('Copy this snapshot:', text);
+    }
+  }
+
+  function celebrateGenerateSuccess() {
+    if (lastScenario && lastScenario.monthlyCashFlowChange > 0) {
+      confettiCooldownUntil = 0;
+      fireWinConfetti();
+    }
+  }
+
   // Public API for onclick handlers
   window.RuoffApp = {
     getGrokEndpoint,
@@ -2399,6 +2774,11 @@
     copyFormattedPlan,
     showVisualSummary,
     copyVisualAsHTML,
+    printOnePager,
+    shareSnapshot,
+    saveScenarioSlot,
+    loadScenarioById,
+    clearScenarios,
     draftInitialEmail,
     contactMyLO,
     copyBorrowerLink,

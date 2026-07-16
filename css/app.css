@@ -1289,3 +1289,189 @@ select.input-field {
 .wizard-rail-step.done .wizard-dot {
   cursor: pointer;
 }
+
+/* ── v3.2: scenarios + print one-pager ──────────────────── */
+.scenario-compare-panel { margin-top: 1.25rem; }
+.scenario-table-wrap { overflow-x: auto; border-radius: 1rem; }
+.scenario-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.scenario-table th,
+.scenario-table td {
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+.scenario-table th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 800;
+}
+.scenario-table .sc-metric {
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.scenario-table .sc-sub {
+  font-size: 0.7rem;
+  opacity: 0.65;
+  font-weight: 600;
+  margin-top: 0.15rem;
+}
+.scenario-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+.scenario-card {
+  border-radius: 1.15rem;
+  padding: 1rem;
+}
+.scenario-compare-empty {
+  padding: 0.25rem 0;
+}
+
+/* Print one-pager */
+#print-one-pager { display: none; }
+body.printing-onepager #print-one-pager {
+  display: block !important;
+}
+body.printing-onepager .app-shell,
+body.printing-onepager .atmosphere,
+body.printing-onepager .wizard-footer,
+body.printing-onepager .sticky-results {
+  display: none !important;
+}
+
+@media print {
+  body * { visibility: hidden; }
+  body.printing-onepager #print-one-pager,
+  body.printing-onepager #print-one-pager * {
+    visibility: visible;
+  }
+  body.printing-onepager #print-one-pager {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    display: block !important;
+    background: white;
+    color: #0f172a;
+  }
+  .no-print { display: none !important; }
+}
+
+.onepager {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  padding: 1.5rem 1.75rem;
+  max-width: 800px;
+  margin: 0 auto;
+  color: #0f172a;
+}
+.op-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 3px solid #00A89D;
+  padding-bottom: 1rem;
+  margin-bottom: 1.25rem;
+}
+.op-brand {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #00A89D;
+}
+.onepager h1 {
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0.2rem 0;
+}
+.op-sub { font-size: 0.9rem; color: #64748b; margin: 0; }
+.op-date { font-size: 0.8rem; color: #64748b; font-weight: 600; }
+.op-hero {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+.op-before, .op-after {
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  padding: 1rem;
+}
+.op-after { border-color: #00A89D; background: #f0fdfa; }
+.op-arrow { font-size: 1.5rem; font-weight: 800; color: #00A89D; }
+.op-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.op-big { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.03em; margin: 0.25rem 0; }
+.op-muted { font-size: 0.8rem; color: #64748b; }
+.op-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.65rem;
+  margin-bottom: 1.25rem;
+}
+.op-kpis > div {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.85rem;
+  padding: 0.75rem;
+}
+.op-kpi { font-size: 1.2rem; font-weight: 800; margin-top: 0.25rem; }
+.op-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.onepager h3 {
+  font-size: 0.85rem;
+  font-weight: 800;
+  margin: 0 0 0.4rem;
+  color: #002B5C;
+}
+.onepager p { font-size: 0.88rem; line-height: 1.45; margin: 0 0 0.75rem; }
+.op-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+.op-table th, .op-table td {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.45rem 0.35rem;
+  text-align: left;
+}
+.op-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.op-foot {
+  margin-top: 1.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e2e8f0;
+  font-size: 0.7rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+.teal { color: #0d9488 !important; }
+.orange { color: #F15A29 !important; }
+.red { color: #dc2626 !important; }
+
+@media print {
+  .op-kpis { grid-template-columns: repeat(4, 1fr); }
+  .onepager { padding: 0; max-width: none; }
+}
+@media (max-width: 640px) {
+  .op-kpis { grid-template-columns: 1fr 1fr; }
+  .op-grid { grid-template-columns: 1fr; }
+}
