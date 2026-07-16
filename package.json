@@ -1,6 +1,6 @@
 {
   "name": "ruoff-smart-savings-calculator",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "releaseDate": "2026-07-16",
   "description": "Ruoff refinance calculator for LOs and borrowers",
   "main": "server.js",

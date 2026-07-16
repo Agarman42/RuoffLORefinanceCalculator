@@ -52,9 +52,21 @@
       <button type="button" id="mode-guided" class="active" onclick="RuoffApp.setExperienceMode('guided')">Guided</button>
       <button type="button" id="mode-expert" onclick="RuoffApp.setExperienceMode('expert')">See everything</button>
     </div>
+    <button type="button" class="text-xs font-semibold opacity-60 hover:opacity-100" onclick="RuoffApp.restartWizard()">Start over</button>
   </div>
 
   <div id="wizard-rail" class="wizard-rail no-print" aria-label="Progress"></div>
+
+  <div id="resume-banner" class="resume-banner hidden no-print" role="status">
+    <div class="flex-1">
+      <p id="resume-banner-text" class="text-sm font-semibold"></p>
+      <p class="text-xs opacity-70 mt-0.5">We saved your progress. Pick up where you left off.</p>
+    </div>
+    <div class="flex gap-2">
+      <button type="button" class="btn-ghost text-sm py-2 px-3" onclick="RuoffApp.restartWizard()">Start over</button>
+      <button type="button" class="btn-primary text-sm py-2 px-3" onclick="RuoffApp.dismissResumeBanner()">Continue</button>
+    </div>
+  </div>
 
   <div id="validation-banner" class="validation-banner hidden" role="status"></div>
 
@@ -65,9 +77,9 @@
 
   <section class="wizard-panel active-step space-y-6" data-wizard-step="0">
   <div class="wizard-only wizard-step-card glass glass-hero rounded-[1.75rem] p-6 sm:p-8">
-    <p class="label-caps">Step 1 of 6</p>
-    <h2 class="wizard-title">Let’s personalize this</h2>
-    <p class="wizard-sub">Optional contact details and what matters most — so your plan feels written for you.</p>
+    <p class="label-caps">About 2 minutes</p>
+    <h2 class="wizard-title">Let’s see what’s possible</h2>
+    <p class="wizard-sub">We’ll walk through your home, mortgage, and optional debts — then show clear numbers before you create a plan. Nothing here is a loan offer.</p>
   </div>
   <section class="glass rounded-[1.75rem] overflow-hidden">
     <button type="button" onclick="RuoffApp.toggleAccordion('client')" class="w-full px-5 sm:px-6 py-4 flex items-center justify-between text-left hover:bg-black/5 dark:hover:bg-white/5">
@@ -182,12 +194,12 @@
   <!-- Scenario -->
   
   <section class="wizard-panel wizard-only glass glass-hero rounded-[1.75rem] p-6 sm:p-10" data-wizard-step="3">
-    <p class="label-caps">Step 4 of 6</p>
-    <h2 class="wizard-title">Any other debts?</h2>
-    <p class="wizard-sub">Optional — cards, cars, student loans.</p>
+    <p class="label-caps">Optional · most people skip or add 1–3</p>
+    <h2 class="wizard-title">Pay off other debt with a refi?</h2>
+    <p class="wizard-sub">High-interest cards and auto loans often free the most monthly cash. You can skip this if you only want a lower mortgage rate.</p>
     <div class="flex flex-col sm:flex-row gap-3 mt-6">
       <button type="button" onclick="RuoffApp.openDebtsModal()" class="btn-primary flex-1">Add other debts</button>
-      <button type="button" onclick="RuoffApp.wizardNext()" class="btn-ghost flex-1">Skip — continue</button>
+      <button type="button" onclick="RuoffApp.wizardNext()" class="btn-ghost flex-1">No thanks — continue</button>
     </div>
     <div id="debts-summary-strip-wizard" class="debts-summary-strip mt-6"></div>
   </section>
@@ -311,8 +323,8 @@
   <section id="section-plan" class="wizard-panel" data-wizard-step="5">
     <div class="wizard-only glass glass-hero rounded-[1.75rem] p-6 sm:p-8 mb-6">
       <p class="label-caps">Step 6 of 6</p>
-      <h2 class="wizard-title">Your snapshot</h2>
-      <p class="wizard-sub">Review the numbers, then create your personalized plan.</p>
+      <h2 class="wizard-title">Looking good — ready for your plan?</h2>
+      <p class="wizard-sub">These figures are estimates for discussion only. Next we'll write a clear plan you can share with your loan officer.</p>
       <div class="flex flex-wrap gap-3 text-sm font-bold">
         <span class="live-preview-chip mb-0">Cash flow <strong id="plan-cf">—</strong></span>
         <span class="live-preview-chip mb-0">At closing <strong id="plan-cash">—</strong></span>
@@ -347,7 +359,20 @@
 </main>
 
 <div class="wizard-footer no-print" id="wizard-footer">
-  <div class="wizard-footer-meta" id="wizard-footer-meta">Step 1 of 6</div>
+  <div class="wizard-footer-left">
+    <div class="wizard-footer-meta" id="wizard-footer-meta">Step 1 of 6</div>
+    <p class="wizard-step-tip" id="wizard-step-tip"></p>
+    <div class="wizard-dock-metrics" aria-live="polite">
+      <div>
+        <span class="dock-label">Cash flow</span>
+        <span id="dock-cashflow" class="dock-value number">$0</span>
+      </div>
+      <div>
+        <span class="dock-label">At closing</span>
+        <span id="dock-cash" class="dock-value number">$0</span>
+      </div>
+    </div>
+  </div>
   <div class="wizard-footer-actions">
     <button type="button" class="btn-ghost" id="wizard-back" onclick="RuoffApp.wizardBack()">Back</button>
     <button type="button" class="btn-primary" id="wizard-next" onclick="RuoffApp.wizardNext()">Continue</button>
@@ -372,7 +397,7 @@
   Ruoff Mortgage Company, Inc., d/b/a Ruoff Mortgage. Equal Housing Lender. NMLS#141868.
   <a href="http://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/141868" target="_blank" rel="noopener" class="text-[#00A89D] font-medium hover:underline">Licensing</a>
   <p id="app-version" class="mt-6 text-xs font-mono opacity-80 tracking-wide">
-    Ruoff Smart Savings Calculator · Borrower · v3.0.0 · 2026-07-16
+    Ruoff Smart Savings Calculator · Borrower · v3.1.0 · 2026-07-16
   </p>
 </footer>
 

@@ -16,6 +16,8 @@
   const BRANDING_KEY = 'ruoff.lo.branding';
   const CLIENT_KEY = MODE === 'lo' ? 'ruoff.lo.client' : 'ruoff.borrower.client';
   const THEME_KEY = 'ruoffTheme';
+  const WIZARD_STEP_KEY = 'ruoff.wizardStep.' + MODE;
+  const MAX_WIZARD_REACHED_KEY = 'ruoff.wizardMax.' + MODE;
 
   /**
    * Grok proxy — API key stays on Render (same pattern as LO / Realtor coaching tools).
@@ -96,6 +98,8 @@
   let openModalIds = [];
   let experienceMode = 'guided'; // 'guided' | 'expert'
   let wizardStep = 0;
+  let wizardMaxReached = 0;
+  const animState = {}; // id -> last numeric value for count-up
 
   const WIZARD_STEPS = MODE === 'lo'
     ? [
@@ -433,30 +437,30 @@
     if ($('new-rate-slider')) $('new-rate-slider').value = state.newRate;
 
     // Current situation
-    setText('equity', money(scenario.equity));
-    setText('ltv', scenario.ltv + '%');
+    animateStat('equity', scenario.equity, { money: true });
+    animateStat('ltv', scenario.ltv, { money: false, suffix: '%' });
     setText('summary-balance', money(scenario.currentBalance));
     setText('summary-total-pay', money(scenario.oldHousing));
     setText('summary-pi', money(scenario.oldPi));
     setText('summary-escrow', money(scenario.oldEscrow));
 
-    // Before / after mirrors (no MutationObserver hack)
-    setText('before-housing-mirror', money(scenario.oldHousing));
+    // Before / after mirrors
+    animateStat('before-housing-mirror', scenario.oldHousing, { money: true });
     setText('before-pi-mirror', money(scenario.oldPi));
 
     // New scenario KPIs
     setText('new-pi-display', money(scenario.newPi));
-    setText('new-housing-display', money(scenario.newHousing));
-    setText('new-equity', money(scenario.newEquity));
-    setText('new-ltv', scenario.newLtv + '%');
+    animateStat('new-housing-display', scenario.newHousing, { money: true, className: 'text-3xl sm:text-4xl font-black pos number mt-1' });
+    animateStat('new-equity', scenario.newEquity, { money: true });
+    animateStat('new-ltv', scenario.newLtv, { money: false, suffix: '%' });
 
     // Cash flow
     const cf = scenario.monthlyCashFlowChange;
-    const cfEl = $('monthly-cashflow');
-    if (cfEl) {
-      cfEl.textContent = (cf > 0 ? '+' : '') + money(cf);
-      cfEl.className = 'text-3xl md:text-4xl font-black number ' + (cf > 0 ? 'pos' : cf < 0 ? 'neg' : '');
-    }
+    animateStat('monthly-cashflow', cf, {
+      money: true,
+      signed: true,
+      className: 'kpi-value number ' + (cf > 0 ? 'pos' : cf < 0 ? 'neg' : '')
+    });
     setText('monthly-cashflow-hint',
       cf > 0
         ? 'More cash flow each month vs today'
@@ -464,20 +468,28 @@
           ? 'Higher combined payment than today'
           : 'About the same monthly cash flow as today');
 
-    setText('total-debts-paid', money(scenario.totalDebtsPaidOff));
+    animateStat('total-debts-paid', scenario.totalDebtsPaidOff, { money: true, className: 'kpi-value number' });
 
     // Cash at closing
     const cashEl = $('cash-at-closing');
     const cashLabel = $('cash-at-closing-label');
     if (cashEl) {
-      cashEl.textContent = money(Math.abs(scenario.cashAtClosing));
-      if (scenario.isCashBack) {
-        cashEl.className = 'text-3xl md:text-4xl font-black number';
-        cashEl.style.color = '#F15A29';
+      if (scenario.cashAtClosing === 0) {
+        animateStat('cash-at-closing', 0, { money: true, className: 'kpi-value number', color: '' });
+        if (cashLabel) cashLabel.textContent = 'Even at closing';
+      } else if (scenario.isCashBack) {
+        animateStat('cash-at-closing', Math.abs(scenario.cashAtClosing), {
+          money: true,
+          className: 'kpi-value number',
+          color: '#F15A29'
+        });
         if (cashLabel) cashLabel.textContent = 'Est. cash back at closing';
       } else {
-        cashEl.className = 'text-3xl md:text-4xl font-black number neg';
-        cashEl.style.color = '';
+        animateStat('cash-at-closing', Math.abs(scenario.cashAtClosing), {
+          money: true,
+          className: 'kpi-value number neg',
+          color: ''
+        });
         if (cashLabel) cashLabel.textContent = 'Est. cash to close';
       }
     }
@@ -488,9 +500,14 @@
     if (beEl) {
       if (scenario.breakEvenMonths == null) {
         beEl.textContent = cf <= 0 ? 'N/A' : '—';
+        animState['break-even'] = null;
         setText('break-even-hint', cf <= 0 ? 'Needs positive monthly savings' : '');
       } else {
-        beEl.textContent = scenario.breakEvenMonths + ' mo';
+        animateStat('break-even', scenario.breakEvenMonths, {
+          money: false,
+          suffix: ' mo',
+          className: 'kpi-value number'
+        });
         setText('break-even-hint', 'Closing costs recovered via monthly savings');
       }
     }
@@ -549,33 +566,33 @@
       }
     }
 
-    // Sticky bar (mobile)
-    if ($('sticky-cashflow')) {
-      $('sticky-cashflow').textContent = (cf > 0 ? '+' : '') + money(cf);
-      $('sticky-cashflow').className = 'font-black number ' + (cf >= 0 ? 'pos' : 'neg');
-    }
-    if ($('sticky-cash')) {
-      if (scenario.cashAtClosing === 0) {
-        $('sticky-cash').textContent = 'Even at close';
-      } else {
-        $('sticky-cash').textContent = (scenario.isCashBack ? 'Back ' : 'To close ') + money(Math.abs(scenario.cashAtClosing));
-      }
-    }
-
-    // Cash at closing $0 edge case
-    if (cashEl && scenario.cashAtClosing === 0) {
-      cashEl.textContent = money(0);
-      cashEl.style.color = '';
-      cashEl.className = 'text-3xl md:text-4xl font-black number';
-      if (cashLabel) cashLabel.textContent = 'Est. even at closing';
-    }
+    // Sticky bar + wizard dock live metrics
+    updateDockMetrics(scenario, cf);
 
     updateValidationBanner(scenario);
     updateBrandingChip();
     updateDebtSummaryStrip();
     updateWizardPreviews(scenario);
     syncTermSegmented();
+    updateStepTip(scenario);
     saveToStorage();
+  }
+
+  function updateDockMetrics(scenario, cf) {
+    const cfText = (cf > 0 ? '+' : '') + money(cf);
+    const cashText = scenario.cashAtClosing === 0
+      ? 'Even'
+      : ((scenario.isCashBack ? 'Back ' : 'Due ') + money(Math.abs(scenario.cashAtClosing)));
+
+    ['sticky-cashflow', 'dock-cashflow'].forEach(function (id) {
+      const el = $(id);
+      if (!el) return;
+      el.textContent = cfText;
+      el.className = (el.className || '').replace(/\b(pos|neg)\b/g, '').trim() + ' ' + (cf > 0 ? 'pos' : cf < 0 ? 'neg' : '');
+    });
+    ['sticky-cash', 'dock-cash'].forEach(function (id) {
+      setText(id, cashText);
+    });
   }
 
   function updateWizardPreviews(scenario) {
@@ -590,6 +607,29 @@
     setText('plan-cf', (cf > 0 ? '+' : '') + money(cf));
     setText('plan-cash', money(Math.abs(scenario.cashAtClosing)));
     setText('plan-be', scenario.breakEvenMonths != null ? scenario.breakEvenMonths + ' mo' : 'N/A');
+  }
+
+  /** Contextual tip under wizard footer / step */
+  function updateStepTip(scenario) {
+    const tip = $('wizard-step-tip');
+    if (!tip || !scenario) return;
+    const tips = {
+      0: MODE === 'lo'
+        ? 'Tip: Save branding once — it rides on every plan and borrower link.'
+        : 'Tip: Goals help your loan officer tailor recommendations.',
+      1: 'Tip: A close estimate is fine — you can refine later with an appraisal.',
+      2: 'Tip: Add current rate + years remaining for honest interest comparisons.',
+      3: selectedOtherDebtsCount() > 0
+        ? 'Nice — ' + selectedOtherDebtsCount() + ' debt(s) selected. Continue when ready.'
+        : 'Optional step. Skip if this is a simple rate-and-term refinance.',
+      4: scenario.monthlyCashFlowChange > 0
+        ? 'Looking strong: about ' + money(scenario.monthlyCashFlowChange) + ' more monthly cash flow in this scenario.'
+        : scenario.monthlyCashFlowChange < 0
+          ? 'Cash flow is higher than today — try rate, term, or which debts you include.'
+          : 'Tune rate, term, or loan amount to explore trade-offs.',
+      5: 'Your calculator numbers are the source of truth. AI only writes the story.'
+    };
+    tip.textContent = tips[wizardStep] || '';
   }
 
   // ─── Experience mode + wizard ────────────────────────────
@@ -615,48 +655,73 @@
     const rail = $('wizard-rail');
     if (!rail) return;
     rail.innerHTML = WIZARD_STEPS.map(function (s, i) {
-      const cls = i < wizardStep ? 'done' : (i === wizardStep ? 'active' : '');
-      const icon = i < wizardStep ? '<i class="fas fa-check"></i>' : String(i + 1);
-      return '<button type="button" class="wizard-rail-step ' + cls + '" data-wiz-goto="' + i + '">' +
-        '<span class="wizard-dot">' + icon + '</span>' +
+      let cls = '';
+      if (i === wizardStep) cls = 'active';
+      else if (i <= wizardMaxReached) cls = 'done';
+      const displayIcon = i === wizardStep
+        ? String(i + 1)
+        : (i <= wizardMaxReached ? '<i class="fas fa-check"></i>' : String(i + 1));
+      return '<button type="button" class="wizard-rail-step ' + cls + '" data-wiz-goto="' + i + '" title="' + s.label + '">' +
+        '<span class="wizard-dot">' + displayIcon + '</span>' +
         '<span class="wizard-rail-label">' + s.label + '</span></button>';
     }).join('');
     rail.querySelectorAll('[data-wiz-goto]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         const i = parseInt(btn.getAttribute('data-wiz-goto'), 10);
-        // Allow jump to completed or current+1
-        if (i <= wizardStep + 1) goToWizardStep(i);
+        // Allow jump to any step already reached, or next step
+        if (i <= wizardMaxReached || i <= wizardStep + 1) goToWizardStep(i);
+        else toast('Finish the earlier steps first — or jump back to where you left off', 'warn');
       });
     });
   }
 
-  function goToWizardStep(step) {
+  function goToWizardStep(step, opts) {
+    const options = opts || {};
     wizardStep = Math.max(0, Math.min(WIZARD_STEPS.length - 1, step));
+    if (wizardStep > wizardMaxReached) wizardMaxReached = wizardStep;
+    try {
+      localStorage.setItem(WIZARD_STEP_KEY, String(wizardStep));
+      localStorage.setItem(MAX_WIZARD_REACHED_KEY, String(wizardMaxReached));
+    } catch (e) { /* ignore */ }
+
     document.querySelectorAll('.wizard-panel').forEach(function (panel) {
       const s = parseInt(panel.getAttribute('data-wizard-step'), 10);
       panel.classList.toggle('active-step', s === wizardStep);
     });
     renderWizardRail();
     const meta = $('wizard-footer-meta');
-    if (meta) meta.textContent = 'Step ' + (wizardStep + 1) + ' of ' + WIZARD_STEPS.length + ' · ' + WIZARD_STEPS[wizardStep].label;
+    if (meta) {
+      meta.textContent = 'Step ' + (wizardStep + 1) + ' of ' + WIZARD_STEPS.length + ' · ' + WIZARD_STEPS[wizardStep].label;
+    }
     const back = $('wizard-back');
     const next = $('wizard-next');
     if (back) back.style.visibility = wizardStep === 0 ? 'hidden' : 'visible';
     if (next) {
       if (wizardStep >= WIZARD_STEPS.length - 1) {
-        next.textContent = 'Generate plan';
+        next.textContent = MODE === 'borrower' ? 'Create my plan' : 'Generate plan';
         next.onclick = function () { generateSmartPlan(); };
       } else {
-        next.textContent = wizardStep === 3 ? 'Continue to scenario' : 'Continue';
+        const labels = {
+          0: 'Continue',
+          1: 'Continue',
+          2: 'Continue',
+          3: 'Continue to scenario',
+          4: 'Review & generate'
+        };
+        next.textContent = labels[wizardStep] || 'Continue';
         next.onclick = function () { wizardNext(); };
       }
     }
-    // Scroll active panel into view
-    const active = document.querySelector('.wizard-panel.active-step');
-    if (active && experienceMode === 'guided') {
-      setTimeout(function () {
-        active.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 50);
+    if (lastScenario) updateStepTip(lastScenario);
+    if (!options.silent) dismissResumeBanner();
+    // Scroll active panel into view (skip on silent restore)
+    if (!options.silent) {
+      const active = document.querySelector('.wizard-panel.active-step');
+      if (active && experienceMode === 'guided') {
+        setTimeout(function () {
+          active.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+      }
     }
   }
 
@@ -671,6 +736,18 @@
   function wizardBack() {
     if (wizardStep <= 0) return;
     goToWizardStep(wizardStep - 1);
+  }
+
+  function restoreWizardProgress() {
+    try {
+      const saved = parseInt(localStorage.getItem(WIZARD_STEP_KEY), 10);
+      const maxR = parseInt(localStorage.getItem(MAX_WIZARD_REACHED_KEY), 10);
+      if (!isNaN(maxR)) wizardMaxReached = Math.max(0, Math.min(WIZARD_STEPS.length - 1, maxR));
+      if (!isNaN(saved)) {
+        wizardStep = Math.max(0, Math.min(WIZARD_STEPS.length - 1, saved));
+        wizardMaxReached = Math.max(wizardMaxReached, wizardStep);
+      }
+    } catch (e) { /* ignore */ }
   }
 
   function setTerm(years) {
@@ -690,6 +767,63 @@
   function setText(id, text) {
     const el = $(id);
     if (el) el.textContent = text;
+  }
+
+  /**
+   * Animate a numeric display toward a target value (money or plain).
+   * @param {string} id
+   * @param {number} target
+   * @param {{ money?: boolean, signed?: boolean, suffix?: string, className?: string, color?: string }} opts
+   */
+  function animateStat(id, target, opts) {
+    const el = $(id);
+    if (!el) return;
+    const options = opts || {};
+    const to = Number(target) || 0;
+    const from = animState[id] != null ? animState[id] : to;
+    animState[id] = to;
+
+    if (options.className) el.className = options.className;
+    if (options.color !== undefined) el.style.color = options.color || '';
+
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || Math.abs(to - from) < 0.5) {
+      el.textContent = formatAnimValue(to, options);
+      return;
+    }
+
+    const start = performance.now();
+    const duration = Math.min(700, 280 + Math.abs(to - from) / 50);
+    if (el._animFrame) cancelAnimationFrame(el._animFrame);
+
+    function frame(now) {
+      const t = Math.min(1, (now - start) / duration);
+      // easeOutCubic
+      const eased = 1 - Math.pow(1 - t, 3);
+      const cur = from + (to - from) * eased;
+      el.textContent = formatAnimValue(cur, options);
+      if (t < 1) {
+        el._animFrame = requestAnimationFrame(frame);
+      } else {
+        el.textContent = formatAnimValue(to, options);
+        el._animFrame = null;
+      }
+    }
+    el._animFrame = requestAnimationFrame(frame);
+  }
+
+  function formatAnimValue(n, options) {
+    const rounded = options.money !== false ? Math.round(n) : Math.round(n);
+    if (options.suffix === '%') return rounded + '%';
+    if (options.suffix === ' mo') {
+      if (n == null || !isFinite(n)) return options.naText || 'N/A';
+      return rounded + ' mo';
+    }
+    if (options.signed) {
+      if (rounded > 0) return '+' + money(rounded);
+      return money(rounded);
+    }
+    return money(Math.abs(rounded));
   }
 
   // ─── Inputs ──────────────────────────────────────────────
@@ -2144,11 +2278,22 @@
     initMiniNav();
     syncTermSegmented();
 
-    // Experience mode (guided wizard default)
+    // Experience mode (guided wizard default) + resume step
     let savedMode = 'guided';
     try { savedMode = localStorage.getItem('ruoff.experienceMode.' + MODE) || 'guided'; } catch (e) {}
+    restoreWizardProgress();
     setExperienceMode(savedMode);
-    goToWizardStep(0);
+    goToWizardStep(wizardStep, { silent: true });
+
+    // Resume banner if returning mid-flow
+    if (wizardStep > 0 && experienceMode === 'guided') {
+      const banner = $('resume-banner');
+      if (banner) {
+        banner.classList.remove('hidden');
+        setText('resume-banner-text',
+          'Welcome back — resuming at “' + WIZARD_STEPS[wizardStep].label + '” (step ' + (wizardStep + 1) + ' of ' + WIZARD_STEPS.length + ').');
+      }
+    }
 
     // Debt form: clear placeholder zeros, Enter to save
     ['new-debt-balance', 'new-debt-pay', 'new-debt-rate', 'new-debt-months'].forEach(function (id) {
@@ -2163,6 +2308,44 @@
         }
       });
     }
+
+    // Arrow keys for wizard (when not typing in an input)
+    document.addEventListener('keydown', function (e) {
+      if (experienceMode !== 'guided') return;
+      if (openModalIds.length) return;
+      const tag = (e.target && e.target.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target && e.target.isContentEditable)) return;
+      if (e.key === 'ArrowRight' || e.key === 'Enter') {
+        if (e.key === 'Enter' && tag === 'BUTTON') return;
+        // don't hijack Enter globally — only ArrowRight
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          wizardNext();
+        }
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        wizardBack();
+      }
+    });
+  }
+
+  function dismissResumeBanner() {
+    const banner = $('resume-banner');
+    if (banner) banner.classList.add('hidden');
+  }
+
+  function restartWizard() {
+    wizardStep = 0;
+    wizardMaxReached = 0;
+    try {
+      localStorage.setItem(WIZARD_STEP_KEY, '0');
+      localStorage.setItem(MAX_WIZARD_REACHED_KEY, '0');
+    } catch (e) { /* ignore */ }
+    dismissResumeBanner();
+    setExperienceMode('guided');
+    goToWizardStep(0);
+    toast('Starting from the beginning');
   }
 
   // Public API for onclick handlers
@@ -2198,6 +2381,8 @@
     wizardNext,
     wizardBack,
     goToWizardStep,
+    restartWizard,
+    dismissResumeBanner,
     setTerm,
     syncTermSegmented,
     clearAllData,

@@ -53,19 +53,33 @@
       <button type="button" id="mode-guided" class="active" onclick="RuoffApp.setExperienceMode('guided')">Guided</button>
       <button type="button" id="mode-expert" onclick="RuoffApp.setExperienceMode('expert')">Full workspace</button>
     </div>
-    <p class="text-xs opacity-60 font-medium hidden sm:block">World-class path · or power-user layout</p>
+    <div class="flex items-center gap-2">
+      <button type="button" class="text-xs font-semibold opacity-60 hover:opacity-100" onclick="RuoffApp.restartWizard()" title="Restart guided flow">Restart tour</button>
+      <p class="text-xs opacity-60 font-medium hidden sm:block">· or power-user layout</p>
+    </div>
   </div>
 
   <div id="wizard-rail" class="wizard-rail no-print" aria-label="Progress"></div>
+
+  <div id="resume-banner" class="resume-banner hidden no-print" role="status">
+    <div class="flex-1">
+      <p id="resume-banner-text" class="text-sm font-semibold"></p>
+      <p class="text-xs opacity-70 mt-0.5">Your numbers were saved. Continue or restart anytime.</p>
+    </div>
+    <div class="flex gap-2">
+      <button type="button" class="btn-ghost text-sm py-2 px-3" onclick="RuoffApp.dismissResumeBanner()">Dismiss</button>
+      <button type="button" class="btn-primary text-sm py-2 px-3" onclick="RuoffApp.dismissResumeBanner()">Continue</button>
+    </div>
+  </div>
 
   <div id="validation-banner" class="validation-banner hidden" role="status"></div>
 
   <!-- LO Branding + client = wizard step 0 -->
   <section class="wizard-panel active-step space-y-6" data-wizard-step="0">
   <div class="wizard-only wizard-step-card glass glass-hero rounded-[1.75rem] p-6 sm:p-8 mb-2">
-    <p class="label-caps">Step 1 of 6</p>
+    <p class="label-caps">About 2–3 minutes with a client</p>
     <h2 class="wizard-title">Set up this client session</h2>
-    <p class="wizard-sub">Add your branding once, then capture who you’re running the scenario for. You can edit everything later.</p>
+    <p class="wizard-sub">Save your branding once — it appears on plans, emails, and borrower links. Then add who’s in the room so the plan feels personal.</p>
   </div>
   <section class="glass rounded-[1.75rem] overflow-hidden">
     <button type="button" onclick="RuoffApp.toggleAccordion('branding')" class="w-full px-5 sm:px-6 py-4 flex items-center justify-between text-left hover:bg-black/5 dark:hover:bg-white/5">
@@ -429,9 +443,22 @@
   </section>
 </main>
 
-<!-- Wizard footer -->
+<!-- Wizard footer / mobile dock -->
 <div class="wizard-footer no-print" id="wizard-footer">
-  <div class="wizard-footer-meta" id="wizard-footer-meta">Step 1 of 6</div>
+  <div class="wizard-footer-left">
+    <div class="wizard-footer-meta" id="wizard-footer-meta">Step 1 of 6</div>
+    <p class="wizard-step-tip" id="wizard-step-tip"></p>
+    <div class="wizard-dock-metrics" aria-live="polite">
+      <div>
+        <span class="dock-label">Cash flow</span>
+        <span id="dock-cashflow" class="dock-value number">$0</span>
+      </div>
+      <div>
+        <span class="dock-label">At closing</span>
+        <span id="dock-cash" class="dock-value number">$0</span>
+      </div>
+    </div>
+  </div>
   <div class="wizard-footer-actions">
     <button type="button" class="btn-ghost" id="wizard-back" onclick="RuoffApp.wizardBack()">Back</button>
     <button type="button" class="btn-primary" id="wizard-next" onclick="RuoffApp.wizardNext()">Continue</button>
@@ -458,7 +485,7 @@
   <a href="http://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/141868" target="_blank" rel="noopener" class="text-[#00A89D] font-medium hover:underline">NMLS Consumer Access</a>.
   Equal Housing Lender. NMLS#141868.
   <p id="app-version" class="mt-6 text-xs font-mono opacity-80 tracking-wide">
-    Ruoff Smart Savings Calculator · LO · v3.0.0 · 2026-07-16
+    Ruoff Smart Savings Calculator · LO · v3.1.0 · 2026-07-16
   </p>
 </footer>
 </div><!-- /.app-shell -->
