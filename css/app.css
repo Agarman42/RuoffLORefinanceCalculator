@@ -304,3 +304,128 @@ select.input-field {
     font-size: 1.25rem;
   }
 }
+
+/* Body lock while modal open */
+body.modal-open {
+  overflow: hidden;
+}
+
+/* Toast */
+#toast {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  animation: toastIn 0.25s ease-out;
+}
+#toast.toast-ok {
+  background: #0f766e;
+  color: #fff;
+}
+#toast.toast-warn {
+  background: #b45309;
+  color: #fff;
+}
+#toast.toast-err {
+  background: #b91c1c;
+  color: #fff;
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translate(-50%, -8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* Validation banner */
+.validation-banner {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.85rem 1rem;
+  border-radius: 1rem;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #9a3412;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+.dark .validation-banner {
+  background: rgba(180, 83, 9, 0.2);
+  border-color: rgba(251, 146, 60, 0.45);
+  color: #fdba74;
+}
+
+/* Goal chips */
+.goal-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid rgba(0, 168, 157, 0.35);
+  background: rgba(0, 168, 157, 0.08);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+.goal-chip:hover {
+  background: rgba(0, 168, 157, 0.18);
+  transform: translateY(-1px);
+}
+.dark .goal-chip {
+  background: rgba(0, 168, 157, 0.12);
+  border-color: rgba(0, 168, 157, 0.4);
+}
+
+/* Branding chip in header */
+.branding-chip {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #002B5C;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 9999px;
+  padding: 0.2rem 0.65rem;
+}
+
+/* Interest comparison strip */
+#interest-comparison {
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+#interest-comparison:hover {
+  border-color: rgba(0, 168, 157, 0.45);
+}
+
+/* Shorter term card polish */
+#shorter-term-savings {
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  transition: border-color 0.15s, transform 0.15s;
+}
+#shorter-term-savings:hover {
+  border-color: rgba(16, 185, 129, 0.5);
+  transform: translateY(-1px);
+}
+
+/* Better sticky bar on mobile */
+.sticky-results {
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.12);
+}
+
+/* Generate button disabled feel */
+button[data-generate-btn]:disabled {
+  cursor: wait;
+}
+
+/* KPI keyboard focus */
+.kpi-card:focus {
+  outline: none;
+}
+
+/* Reduce motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

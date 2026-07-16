@@ -91,10 +91,41 @@
   let lastScenario = null;
   let mortgageModalSource = 'main';
   let editingDebtIndex = undefined;
+  let generatingPlan = false;
+  let openModalIds = [];
 
   // ─── Helpers ─────────────────────────────────────────────
   const $ = (id) => document.getElementById(id);
   const money = (n, signed) => C.formatMoney(n, { signed: !!signed });
+
+  function setModalOpen(id, open) {
+    const el = $(id);
+    if (!el) return;
+    if (open) {
+      el.classList.remove('hidden');
+      if (openModalIds.indexOf(id) === -1) openModalIds.push(id);
+    } else {
+      el.classList.add('hidden');
+      openModalIds = openModalIds.filter(x => x !== id);
+    }
+    document.body.classList.toggle('modal-open', openModalIds.length > 0);
+  }
+
+  function closeTopModal() {
+    const stack = ['add-debt-modal', 'detail-modal', 'help-modal', 'mortgage-modal', 'debts-modal', 'loading-modal', 'email-loading-modal'];
+    for (let i = 0; i < stack.length; i++) {
+      const el = $(stack[i]);
+      if (el && !el.classList.contains('hidden')) {
+        if (stack[i] === 'mortgage-modal') { closeMortgageModal(); return; }
+        if (stack[i] === 'debts-modal') { closeDebtsModal(); return; }
+        if (stack[i] === 'add-debt-modal') { closeAddDebtModal(); return; }
+        if (stack[i] === 'detail-modal') { closeDetailModal(); return; }
+        if (stack[i] === 'help-modal') { closeHelp(); return; }
+        // Don't dismiss loading with Escape
+        return;
+      }
+    }
+  }
 
   function parseNum(val) {
     if (val == null || val === '') return 0;
@@ -166,6 +197,7 @@
       cell: ($('branding-cell') && $('branding-cell').value.trim()) || ''
     };
     try { localStorage.setItem(BRANDING_KEY, JSON.stringify(state.branding)); } catch (e) {}
+    updateBrandingChip();
     toggleAccordion('branding-content', 'branding-chevron', false);
     toast('Branding saved — it will appear on plans and emails.');
   }
@@ -246,16 +278,79 @@
     el.textContent = MODE === 'borrower' ? ' · ' + n : n;
   }
 
-  function toast(msg) {
+  function toast(msg, type) {
     const el = $('toast');
     if (!el) {
       alert(msg);
       return;
     }
     el.textContent = msg;
-    el.classList.remove('hidden');
+    el.classList.remove('hidden', 'toast-ok', 'toast-warn', 'toast-err');
+    el.classList.add(type === 'error' ? 'toast-err' : type === 'warn' ? 'toast-warn' : 'toast-ok');
     clearTimeout(toast._t);
-    toast._t = setTimeout(() => el.classList.add('hidden'), 3200);
+    toast._t = setTimeout(() => el.classList.add('hidden'), 3400);
+  }
+
+  function updateBrandingChip() {
+    const chip = $('branding-chip');
+    if (!chip) return;
+    if (state.branding && state.branding.name) {
+      chip.classList.remove('hidden');
+      chip.textContent = state.branding.name + (state.branding.nmls ? ' · NMLS ' + state.branding.nmls : '');
+    } else {
+      chip.classList.add('hidden');
+      chip.textContent = '';
+    }
+  }
+
+  function updateValidationBanner(scenario) {
+    const banner = $('validation-banner');
+    if (!banner) return;
+    const issues = [];
+    if (state.homeValue > 0 && state.currentBalance > state.homeValue) {
+      issues.push('Mortgage balance is higher than home value — check your numbers.');
+    }
+    if (state.currentRate <= 0) {
+      issues.push('Add your current rate (Edit mortgage) for accurate interest comparisons.');
+    }
+    if (state.yearsRemaining <= 0) {
+      issues.push('Add years remaining on your current loan for interest comparisons.');
+    }
+    if (state.newRate <= 0) {
+      issues.push('Enter a proposed interest rate greater than 0.');
+    }
+    if (state.newLoanAmount < state.currentBalance && !scenario.isCashOutScenario) {
+      // rate-and-term with smaller loan is OK (principal curtailment) — soft note only if much smaller
+      if (state.newLoanAmount < state.currentBalance * 0.9) {
+        issues.push('New loan is well below current balance — confirm you intend to bring cash to close.');
+      }
+    }
+    if (scenario && scenario.overMaxLoan) {
+      issues.push('Loan amount exceeds the ' + scenario.maxLtvPct + '% LTV guideline for this scenario.');
+    }
+    if (!issues.length) {
+      banner.classList.add('hidden');
+      banner.innerHTML = '';
+      return;
+    }
+    banner.classList.remove('hidden');
+    banner.innerHTML = '<i class="fas fa-triangle-exclamation flex-shrink-0 mt-0.5"></i><div><strong class="font-semibold">Double-check:</strong> ' +
+      issues.map(escapeHtml).join(' ') + '</div>';
+  }
+
+  function appendGoalChip(text) {
+    const ta = $('client-notes');
+    if (!ta) return;
+    const chip = String(text || '').trim();
+    if (!chip) return;
+    const cur = ta.value.trim();
+    if (cur.toLowerCase().indexOf(chip.toLowerCase()) !== -1) {
+      toast('Already in your goals', 'warn');
+      return;
+    }
+    ta.value = cur ? (cur.replace(/[;\s]*$/, '') + '; ' + chip) : chip;
+    saveClient();
+    toast('Added to goals');
   }
 
   function toggleAccordion(contentId, chevronId, forceOpen) {
@@ -324,6 +419,10 @@
     setText('summary-pi', money(scenario.oldPi));
     setText('summary-escrow', money(scenario.oldEscrow));
 
+    // Before / after mirrors (no MutationObserver hack)
+    setText('before-housing-mirror', money(scenario.oldHousing));
+    setText('before-pi-mirror', money(scenario.oldPi));
+
     // New scenario KPIs
     setText('new-pi-display', money(scenario.newPi));
     setText('new-housing-display', money(scenario.newHousing));
@@ -335,12 +434,14 @@
     const cfEl = $('monthly-cashflow');
     if (cfEl) {
       cfEl.textContent = (cf > 0 ? '+' : '') + money(cf);
-      cfEl.className = 'text-3xl md:text-4xl font-black number ' + (cf >= 0 ? 'pos' : 'neg');
+      cfEl.className = 'text-3xl md:text-4xl font-black number ' + (cf > 0 ? 'pos' : cf < 0 ? 'neg' : '');
     }
     setText('monthly-cashflow-hint',
-      cf >= 0
+      cf > 0
         ? 'More cash flow each month vs today'
-        : 'Higher combined payment than today');
+        : cf < 0
+          ? 'Higher combined payment than today'
+          : 'About the same monthly cash flow as today');
 
     setText('total-debts-paid', money(scenario.totalDebtsPaidOff));
 
@@ -433,9 +534,23 @@
       $('sticky-cashflow').className = 'font-black number ' + (cf >= 0 ? 'pos' : 'neg');
     }
     if ($('sticky-cash')) {
-      $('sticky-cash').textContent = (scenario.isCashBack ? 'Back ' : 'To close ') + money(Math.abs(scenario.cashAtClosing));
+      if (scenario.cashAtClosing === 0) {
+        $('sticky-cash').textContent = 'Even at close';
+      } else {
+        $('sticky-cash').textContent = (scenario.isCashBack ? 'Back ' : 'To close ') + money(Math.abs(scenario.cashAtClosing));
+      }
     }
 
+    // Cash at closing $0 edge case
+    if (cashEl && scenario.cashAtClosing === 0) {
+      cashEl.textContent = money(0);
+      cashEl.style.color = '';
+      cashEl.className = 'text-3xl md:text-4xl font-black number';
+      if (cashLabel) cashLabel.textContent = 'Est. even at closing';
+    }
+
+    updateValidationBanner(scenario);
+    updateBrandingChip();
     saveToStorage();
   }
 
@@ -446,15 +561,34 @@
 
   // ─── Inputs ──────────────────────────────────────────────
   function formatHomeValue() {
+    // Live type: update math without fighting the caret via aggressive reformat
+    const raw = parseNum($('home-value').value);
+    if (raw > 0) state.homeValue = raw;
+    liveUpdate();
+  }
+
+  function formatHomeValueBlur() {
     const raw = parseNum($('home-value').value);
     state.homeValue = raw || state.homeValue;
-    $('home-value').value = state.homeValue.toLocaleString();
+    if ($('home-value')) $('home-value').value = Number(state.homeValue).toLocaleString();
     liveUpdate();
   }
 
   function syncHomeSlider() {
     state.homeValue = parseNum($('home-slider').value);
     $('home-value').value = state.homeValue.toLocaleString();
+    liveUpdate();
+  }
+
+  function onNewLoanInput() {
+    liveUpdate();
+  }
+
+  function onNewRateInput() {
+    readStateFromDom();
+    if ($('new-rate-slider') && state.newRate >= 2.5 && state.newRate <= 10) {
+      $('new-rate-slider').value = state.newRate;
+    }
     liveUpdate();
   }
 
@@ -510,8 +644,11 @@
     if ($('years-remaining')) $('years-remaining').value = state.yearsRemaining;
     if ($('closing-date')) $('closing-date').value = state.closingDate || '';
     updateMortgageModal();
-    $('mortgage-modal').classList.remove('hidden');
-    if (fromDebts) $('debts-modal').classList.add('hidden');
+    setModalOpen('mortgage-modal', true);
+    if (fromDebts) setModalOpen('debts-modal', false);
+    setTimeout(function () {
+      if ($('modal-balance')) $('modal-balance').focus();
+    }, 50);
   }
 
   function closeMortgageModal() {
@@ -527,14 +664,14 @@
       state.closingDate = $('closing-date') ? $('closing-date').value : '';
       ensureMortgageDebt();
       saveToStorage();
-      $('mortgage-modal').classList.add('hidden');
+      setModalOpen('mortgage-modal', false);
       liveUpdate();
       if (mortgageModalSource === 'debts') {
         setTimeout(openDebtsModal, 200);
       }
     } catch (e) {
       console.error(e);
-      $('mortgage-modal').classList.add('hidden');
+      setModalOpen('mortgage-modal', false);
     }
   }
 
@@ -561,12 +698,12 @@
   function openDebtsModal() {
     ensureMortgageDebt();
     renderDebts();
-    $('debts-modal').classList.remove('hidden');
+    setModalOpen('debts-modal', true);
   }
 
   function closeDebtsModal() {
     saveToStorage();
-    $('debts-modal').classList.add('hidden');
+    setModalOpen('debts-modal', false);
     liveUpdate();
   }
 
@@ -664,13 +801,15 @@
       const btn = $('add-debt-submit');
       if (btn) btn.textContent = 'Add Debt';
     }
-    $('add-debt-modal').classList.remove('hidden');
-    setTimeout(() => $('new-debt-name').focus(), 80);
+    setModalOpen('add-debt-modal', true);
+    setTimeout(() => { if ($('new-debt-name')) $('new-debt-name').focus(); }, 80);
   }
 
   function closeAddDebtModal() {
-    $('add-debt-modal').classList.add('hidden');
+    setModalOpen('add-debt-modal', false);
     editingDebtIndex = undefined;
+    const btn = $('add-debt-submit');
+    if (btn) btn.textContent = 'Add Debt';
   }
 
   function addNewDebt() {
@@ -682,12 +821,19 @@
     const rate = parseNum($('new-debt-rate').value);
     const months = parseNum($('new-debt-months').value);
 
+    if (bal <= 0 && pay <= 0) {
+      toast('Enter a balance or monthly payment for this debt', 'warn');
+      return;
+    }
+
     if (editingDebtIndex !== undefined) {
       const prev = state.debts[editingDebtIndex];
       state.debts[editingDebtIndex] = { name, bal, pay, rate, months, payOff: prev.payOff !== false };
       editingDebtIndex = undefined;
+      toast('Debt updated');
     } else {
       state.debts.push({ name, bal, pay, rate, months, payOff: true });
+      toast('Debt added');
     }
     closeAddDebtModal();
     renderDebts();
@@ -825,28 +971,41 @@
   function showDetailModal(title, bodyHtml) {
     $('detail-title').textContent = title;
     $('detail-body').innerHTML = bodyHtml;
-    $('detail-modal').classList.remove('hidden');
+    setModalOpen('detail-modal', true);
   }
 
   function closeDetailModal() {
-    $('detail-modal').classList.add('hidden');
+    setModalOpen('detail-modal', false);
   }
 
   function showHelp(title, content) {
     $('help-title').textContent = title;
     $('help-content').innerHTML = content;
-    $('help-modal').classList.remove('hidden');
+    setModalOpen('help-modal', true);
   }
 
   function closeHelp() {
-    $('help-modal').classList.add('hidden');
+    setModalOpen('help-modal', false);
   }
 
   // ─── AI plan generation ──────────────────────────────────
   async function generateSmartPlan() {
+    if (generatingPlan) return;
     if (!lastScenario) liveUpdate();
+
+    // Soft block only for hard math problems
+    if (state.homeValue <= 0 || state.currentBalance < 0) {
+      toast('Enter a valid home value and mortgage balance first', 'warn');
+      return;
+    }
+
+    generatingPlan = true;
+    document.querySelectorAll('[data-generate-btn]').forEach(function (btn) {
+      btn.disabled = true;
+      btn.classList.add('opacity-70', 'pointer-events-none');
+    });
     const modal = $('loading-modal');
-    if (modal) modal.classList.remove('hidden');
+    if (modal) setModalOpen('loading-modal', true);
 
     const client = collectClient();
     saveClient();
@@ -936,15 +1095,22 @@
       setResultsClientName(client.clientName);
       showTab(0);
       $('results-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      toast('Smart Plan ready');
     } catch (e) {
       console.error(e);
       // Offline / API-down fallback: deterministic plan from numbers
       window.currentPlan = { tabs: buildFallbackPlan(numbers, isLo) };
       setResultsClientName(numbers.clientName);
       showTab(0);
-      toast('AI unavailable — showing calculated plan summary instead. (' + (e.message || 'error') + ')');
+      $('results-area').classList.remove('hidden');
+      toast('AI unavailable — showing calculated plan instead', 'warn');
     } finally {
-      if (modal) modal.classList.add('hidden');
+      generatingPlan = false;
+      if (modal) setModalOpen('loading-modal', false);
+      document.querySelectorAll('[data-generate-btn]').forEach(function (btn) {
+        btn.disabled = false;
+        btn.classList.remove('opacity-70', 'pointer-events-none');
+      });
     }
   }
 
@@ -1158,7 +1324,7 @@
     if (!lastScenario) liveUpdate();
     const numbers = window.clientCalcData || C.buildCanonicalNumbers(lastScenario, collectClient());
     const emailModal = $('email-loading-modal');
-    if (emailModal) emailModal.classList.remove('hidden');
+    if (emailModal) setModalOpen('email-loading-modal', true);
 
     const branding = state.branding;
     const firstName = (numbers.clientName || 'there').split(' ')[0];
@@ -1220,7 +1386,7 @@
         '?subject=' + encodeURIComponent(subject) +
         '&body=' + encodeURIComponent(body);
     } finally {
-      if (emailModal) emailModal.classList.add('hidden');
+      if (emailModal) setModalOpen('email-loading-modal', false);
     }
   }
 
@@ -1260,14 +1426,29 @@
   }
 
   function copyBorrowerLink() {
-    const base = window.location.origin + window.location.pathname.replace(/index\.html$/, 'borrower.html');
+    if (!state.branding.email && !state.branding.name) {
+      toast('Save your branding first so the link includes your contact info', 'warn');
+    }
+    let base = window.location.origin + '/borrower.html';
+    // If path still ends with index.html (local file or some hosts)
+    if (/index\.html$/i.test(window.location.pathname)) {
+      base = window.location.origin + window.location.pathname.replace(/index\.html$/i, 'borrower.html');
+    } else if (window.location.pathname && window.location.pathname !== '/') {
+      // Keep directory context when not at root
+      const dir = window.location.pathname.replace(/\/[^/]*$/, '/');
+      base = window.location.origin + dir + 'borrower.html';
+    }
     const params = new URLSearchParams();
     if (state.branding.name) params.set('loName', state.branding.name);
     if (state.branding.email) params.set('loEmail', state.branding.email);
     if (state.branding.cell) params.set('loPhone', state.branding.cell);
     if (state.branding.nmls) params.set('loNmls', state.branding.nmls);
     const url = base + (params.toString() ? '?' + params.toString() : '');
-    navigator.clipboard.writeText(url).then(() => toast('Borrower link copied — share so Contact LO emails you.'));
+    navigator.clipboard.writeText(url).then(function () {
+      toast('Borrower link copied — Contact LO will email you');
+    }).catch(function () {
+      prompt('Copy this borrower link:', url);
+    });
   }
 
   // ─── Theme ───────────────────────────────────────────────
@@ -1325,14 +1506,12 @@
       });
     });
 
-    // Escape closes modals
+    // Escape closes topmost modal (not loading)
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        ['mortgage-modal', 'debts-modal', 'add-debt-modal', 'help-modal', 'detail-modal'].forEach(id => {
-          if ($(id)) $(id).classList.add('hidden');
-        });
-      }
+      if (e.key === 'Escape') closeTopModal();
     });
+
+    updateBrandingChip();
   }
 
   // Public API for onclick handlers
@@ -1341,10 +1520,14 @@
     callGrokAPI,
     liveUpdate,
     formatHomeValue,
+    formatHomeValueBlur,
     syncHomeSlider,
     syncNewLoanSlider,
     syncNewRateSlider,
+    onNewLoanInput,
+    onNewRateInput,
     applyPreset,
+    appendGoalChip,
     openMortgageModal,
     closeMortgageModal,
     updateMortgageModal,

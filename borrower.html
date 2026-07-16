@@ -23,8 +23,8 @@
       </div>
       <div class="flex items-center gap-2 text-white/90 text-xs">
         <span class="opacity-75">Light</span>
-        <label class="debt-toggle scale-75 origin-right">
-          <input type="checkbox" id="theme-toggle" class="sr-only">
+        <label class="debt-toggle scale-75 origin-right" title="Toggle color theme">
+          <input type="checkbox" id="theme-toggle" class="sr-only" aria-label="Toggle dark mode">
           <span class="debt-toggle-slider"></span>
         </label>
         <span class="opacity-75">Dark</span>
@@ -33,9 +33,10 @@
   </div>
 </header>
 
-<div id="toast" class="hidden fixed top-24 left-1/2 -translate-x-1/2 z-[1000] bg-zinc-900 text-white px-6 py-3 rounded-2xl shadow-2xl text-sm font-medium max-w-md text-center"></div>
+<div id="toast" class="hidden fixed top-24 left-1/2 -translate-x-1/2 z-[1000] px-6 py-3 rounded-2xl shadow-2xl text-sm font-medium max-w-md text-center" role="status" aria-live="polite"></div>
 
 <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+  <div id="validation-banner" class="validation-banner hidden" role="status"></div>
 
   <div id="lo-contact-banner" class="hidden glass rounded-2xl px-5 py-3 flex items-center gap-3 border border-[#00A89D]/30">
     <i class="fas fa-user-check text-[#00A89D]"></i>
@@ -76,6 +77,13 @@
         </div>
         <div class="sm:col-span-2">
           <label class="block text-xs opacity-70 mb-1">What matters most?</label>
+          <div class="flex flex-wrap gap-2 mb-3">
+            <button type="button" class="goal-chip" onclick="RuoffApp.appendGoalChip('Lower monthly payment')">Lower payment</button>
+            <button type="button" class="goal-chip" onclick="RuoffApp.appendGoalChip('Pay off high-interest debt')">Pay off debt</button>
+            <button type="button" class="goal-chip" onclick="RuoffApp.appendGoalChip('Cash for home project')">Cash for project</button>
+            <button type="button" class="goal-chip" onclick="RuoffApp.appendGoalChip('Pay off home faster')">Pay off faster</button>
+            <button type="button" class="goal-chip" onclick="RuoffApp.appendGoalChip('Remove PMI')">Remove PMI</button>
+          </div>
           <textarea id="client-notes" class="input-field h-24 resize-y text-base font-normal" placeholder="Lower my payment, pay off credit cards, cash for a new roof…" onblur="RuoffApp.saveClient()"></textarea>
         </div>
       </div>
@@ -93,8 +101,10 @@
     </div>
     <div class="flex justify-center items-baseline gap-1 my-4">
       <span class="text-3xl sm:text-4xl font-black">$</span>
-      <input id="home-value" type="text" value="450,000" oninput="RuoffApp.formatHomeValue()"
-             class="text-4xl sm:text-5xl font-black bg-transparent focus:outline-none number text-center min-w-[12rem] max-w-full">
+      <input id="home-value" type="text" value="450,000" inputmode="numeric" autocomplete="off"
+             oninput="RuoffApp.formatHomeValue()" onblur="RuoffApp.formatHomeValueBlur()"
+             class="text-4xl sm:text-5xl font-black bg-transparent focus:outline-none number text-center min-w-[12rem] max-w-full"
+             aria-label="Home value">
     </div>
     <input type="range" id="home-slider" min="100000" max="3000000" step="1000" value="450000" oninput="RuoffApp.syncHomeSlider()" class="w-full accent-[#00A89D]">
     <div class="flex justify-between text-xs mt-2 opacity-60">
@@ -171,13 +181,13 @@
         <label class="block text-xs opacity-70 mb-1 text-center">New loan amount</label>
         <div class="dollar-wrap">
           <span class="prefix">$</span>
-          <input id="new-loan-amt" type="number" value="320000" oninput="RuoffApp.liveUpdate()" class="input-field input-lg">
+          <input id="new-loan-amt" type="number" value="320000" oninput="RuoffApp.onNewLoanInput()" class="input-field input-lg" aria-label="New loan amount">
         </div>
-        <input type="range" id="new-loan-slider" min="50000" max="2000000" step="1000" value="320000" oninput="RuoffApp.syncNewLoanSlider()" class="w-full accent-[#F15A29] mt-2">
+        <input type="range" id="new-loan-slider" min="50000" max="2000000" step="1000" value="320000" oninput="RuoffApp.syncNewLoanSlider()" class="w-full accent-[#F15A29] mt-2" aria-label="New loan amount slider">
       </div>
       <div>
         <label class="block text-xs opacity-70 mb-1 text-center">New rate (%)</label>
-        <input id="new-rate" type="number" step="0.125" value="5.875" oninput="RuoffApp.liveUpdate()" class="input-field input-lg text-center">
+        <input id="new-rate" type="number" step="0.125" value="5.875" oninput="RuoffApp.onNewRateInput()" class="input-field input-lg text-center" aria-label="New interest rate">
         <input type="range" id="new-rate-slider" min="2.5" max="10" step="0.125" value="5.875" oninput="RuoffApp.syncNewRateSlider()" class="w-full accent-[#F15A29] mt-2">
       </div>
       <div>
@@ -249,19 +259,19 @@
       </div>
     </div>
 
-    <div class="mt-4 glass rounded-2xl p-4 text-sm" id="interest-comparison"></div>
+    <div class="mt-4 glass rounded-2xl p-4 text-sm" id="interest-comparison" role="button" tabindex="0" onclick="RuoffApp.showInterestModal()" onkeydown="if(event.key==='Enter')RuoffApp.showInterestModal()"></div>
     <div id="half-savings-tip" class="hidden mt-3 text-sm glass rounded-2xl p-4 border border-emerald-400/30"></div>
-    <div id="shorter-term-savings" class="mt-4 glass rounded-2xl p-5 text-center cursor-pointer" onclick="RuoffApp.showInterestModal()"></div>
+    <div id="shorter-term-savings" class="mt-4 glass rounded-2xl p-5 text-center cursor-pointer" role="button" tabindex="0" onclick="RuoffApp.showInterestModal()" onkeydown="if(event.key==='Enter')RuoffApp.showInterestModal()"></div>
   </section>
 
   <section>
-    <button type="button" onclick="RuoffApp.generateSmartPlan()"
+    <button type="button" data-generate-btn onclick="RuoffApp.generateSmartPlan()"
             class="group w-full py-8 sm:py-10 text-xl sm:text-2xl font-black tracking-tight
                    bg-gradient-to-r from-[#00A89D] via-[#F15A29] to-[#002B5C]
                    hover:brightness-110 rounded-2xl shadow-xl text-white
                    transition-all flex items-center justify-center gap-4 border border-white/20">
       <span>Create my personalized plan</span>
-      <span class="text-3xl group-hover:rotate-12 transition-transform">✨</span>
+      <span class="text-3xl group-hover:rotate-12 transition-transform" aria-hidden="true">✨</span>
     </button>
     <p class="text-center text-xs opacity-60 mt-3">Estimates only — not an offer of credit. Your loan officer will verify pricing and eligibility.</p>
   </section>
@@ -294,7 +304,7 @@
     <div class="opacity-60 text-xs">At closing</div>
     <div id="sticky-cash" class="font-black number text-sm">$0</div>
   </div>
-  <button type="button" onclick="RuoffApp.generateSmartPlan()" class="px-4 py-2.5 bg-[#00A89D] text-white text-sm font-bold rounded-xl">Plan</button>
+  <button type="button" data-generate-btn onclick="RuoffApp.generateSmartPlan()" class="px-4 py-2.5 bg-[#00A89D] text-white text-sm font-bold rounded-xl">Plan</button>
 </div>
 
 <footer class="max-w-6xl mx-auto px-4 sm:px-6 py-10 text-center text-sm leading-relaxed opacity-70 border-t border-zinc-200 dark:border-white/10 mt-6">
@@ -302,7 +312,7 @@
   Ruoff Mortgage Company, Inc., d/b/a Ruoff Mortgage. Equal Housing Lender. NMLS#141868.
   <a href="http://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/141868" target="_blank" rel="noopener" class="text-[#00A89D] font-medium hover:underline">Licensing</a>
   <p id="app-version" class="mt-6 text-xs font-mono opacity-80 tracking-wide">
-    Ruoff Smart Savings Calculator · Borrower · v2.0.0 · 2026-07-16
+    Ruoff Smart Savings Calculator · Borrower · v2.0.1 · 2026-07-16
   </p>
 </footer>
 
@@ -478,21 +488,5 @@
 <script>window.APP_MODE = 'borrower';</script>
 <script src="js/calculator-core.js"></script>
 <script src="js/app.js"></script>
-<script>
-  (function () {
-    const hook = () => {
-      const pay = document.getElementById('summary-total-pay');
-      const pi = document.getElementById('summary-pi');
-      const before = document.getElementById('before-housing-mirror');
-      const beforePi = document.getElementById('before-pi-mirror');
-      if (pay && before) before.textContent = pay.textContent;
-      if (pi && beforePi) beforePi.textContent = pi.textContent;
-    };
-    const el = document.getElementById('summary-total-pay');
-    if (el) new MutationObserver(hook).observe(el, { childList: true, characterData: true, subtree: true });
-    setTimeout(hook, 100);
-    setInterval(hook, 500);
-  })();
-</script>
 </body>
 </html>
