@@ -20,6 +20,10 @@
   --glass-border: rgba(255, 255, 255, 0.55);
   --text: #0f172a;
   --muted: #64748b;
+  /* Single reading column in guided mode — everything aligns to this */
+  --guided-max: 40rem;   /* 640px — one consistent card width */
+  --expert-max: 72rem;   /* full workspace */
+  --page-gutter: 1.25rem;
 }
 
 .dark {
@@ -774,10 +778,131 @@ body.mode-expert h3.expert-only { display: flex; }
 }
 
 .wizard-step-card {
-  max-width: 40rem;
-  margin: 0 auto;
+  max-width: none; /* fill guided column — no nested narrow cards */
+  margin: 0;
+  width: 100%;
 }
-.wizard-step-card.wide { max-width: 56rem; }
+.wizard-step-card.wide { max-width: none; }
+
+/* ══════════════════════════════════════════════════════════
+   UNIFIED WIDTH SYSTEM
+   Guided: one centered column for rail, cards, tips, footer
+   Expert: full workspace max width
+   ══════════════════════════════════════════════════════════ */
+main.app-main,
+main {
+  width: 100%;
+  max-width: calc(var(--expert-max) + var(--page-gutter) * 2);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--page-gutter);
+  padding-right: var(--page-gutter);
+  box-sizing: border-box;
+}
+
+/* Guided: one column — intro, accordions, rail, everything same width */
+body.mode-guided main.app-main,
+body.mode-guided main {
+  max-width: calc(var(--guided-max) + var(--page-gutter) * 2);
+}
+
+/* Even spacing between guided sections */
+body.mode-guided main.app-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+body.mode-guided main.app-main.space-y-6 > :not([hidden]) {
+  margin-top: 0; /* gap handles spacing; neutralize Tailwind space-y */
+}
+
+/* Every guided surface is full width of the column */
+body.mode-guided .wizard-panel,
+body.mode-guided .wizard-panel > .glass,
+body.mode-guided .wizard-panel > section.glass,
+body.mode-guided .wizard-step-card,
+body.mode-guided .mode-bar,
+body.mode-guided .wizard-rail,
+body.mode-guided #resume-banner,
+body.mode-guided #validation-banner,
+body.mode-guided #lo-contact-banner {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Stack step-0 children full-bleed inside the column */
+body.mode-guided .wizard-panel[data-wizard-step="0"] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+body.mode-guided .wizard-panel[data-wizard-step="0"].active-step {
+  display: flex;
+}
+body.mode-guided .wizard-panel[data-wizard-step="0"] > * {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Consistent card chrome in guided mode */
+body.mode-guided .glass {
+  border-radius: 1.25rem !important;
+}
+body.mode-guided .wizard-step-card {
+  padding: 1.5rem 1.5rem !important;
+}
+@media (min-width: 640px) {
+  body.mode-guided .wizard-step-card {
+    padding: 1.75rem 1.75rem !important;
+  }
+}
+
+/* Progress rail fills the same column */
+body.mode-guided .wizard-rail {
+  margin-left: 0;
+  margin-right: 0;
+  padding-left: 0;
+  padding-right: 0;
+  justify-content: space-between;
+}
+body.mode-guided .wizard-rail-step {
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: center;
+}
+body.mode-guided .wizard-rail-step:not(:last-child)::after {
+  min-width: 0.5rem;
+  flex: 1 1 auto;
+}
+
+/* Mode bar aligned to column */
+body.mode-guided .mode-bar {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* Footer dock aligns to same column as content */
+body.mode-guided .wizard-footer {
+  padding-left: max(var(--page-gutter), calc(50% - var(--guided-max) / 2));
+  padding-right: max(var(--page-gutter), calc(50% - var(--guided-max) / 2));
+  box-sizing: border-box;
+}
+
+/* Expert: keep wide layout for power users */
+body.mode-expert main {
+  max-width: calc(var(--expert-max) + var(--page-gutter) * 2);
+}
+body.mode-expert .wizard-step-card {
+  max-width: none;
+}
+
+/* Accordion rows: match card padding rhythm */
+body.mode-guided .wizard-panel .glass > button.w-full,
+body.mode-guided .wizard-panel section.glass > button {
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
 
 .wizard-title {
   font-size: clamp(1.5rem, 3vw, 2rem);
@@ -1474,4 +1599,28 @@ body.printing-onepager .sticky-results {
 @media (max-width: 640px) {
   .op-kpis { grid-template-columns: 1fr 1fr; }
   .op-grid { grid-template-columns: 1fr; }
+}
+
+/* Guided layout final overrides (must win cascade) */
+body.mode-guided .wizard-panel { display: none !important; }
+body.mode-guided .wizard-panel.active-step {
+  display: block !important;
+  width: 100%;
+  animation: stepIn 0.4s cubic-bezier(0.34, 1.15, 0.64, 1);
+}
+body.mode-guided .wizard-panel[data-wizard-step="0"].active-step {
+  display: flex !important;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+body.mode-expert .wizard-panel {
+  display: block !important;
+  width: 100%;
+}
+/* Full-width glass cards inside guided column — no nested max-width */
+body.mode-guided .wizard-step-card.wizard-only,
+body.mode-guided .wizard-only.wizard-step-card {
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
 }
