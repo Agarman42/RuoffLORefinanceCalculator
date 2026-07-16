@@ -91,6 +91,7 @@
   let lastScenario = null;
   let mortgageModalSource = 'main';
   let editingDebtIndex = undefined;
+  let expandedDebtIndex = null; // inline edit in debts list
   let generatingPlan = false;
   let openModalIds = [];
 
@@ -748,6 +749,7 @@
     }
     const otherBal = C.otherDebtsPaidOff(state.debts);
     const otherPay = C.otherDebtMonthlyPayments(state.debts);
+    const sizeNeeded = computeSizeLoanTarget();
     strip.innerHTML =
       '<div class="debts-summary-row">' +
         '<div><span class="font-semibold">' + selected + ' of ' + count + '</span> other debt' + (count === 1 ? '' : 's') +
@@ -756,17 +758,65 @@
           '<span class="font-bold number pos">' + money(otherPay) + '/mo</span> · ' +
           '<span class="font-bold number" style="color:var(--ruoff-orange)">' + money(otherBal) + '</span> balances' +
         '</div>' +
-        '<button type="button" class="text-sm font-semibold text-[var(--ruoff-teal)] hover:underline" onclick="RuoffApp.openDebtsModal()">Edit debts →</button>' +
+        '<div class="flex flex-wrap gap-2">' +
+          (selected > 0
+            ? '<button type="button" class="size-loan-btn" onclick="RuoffApp.sizeLoanToCoverDebts()"><i class="fas fa-magic mr-1"></i> Size loan to cover (' + money(sizeNeeded.target) + ')</button>'
+            : '') +
+          '<button type="button" class="text-sm font-semibold text-[var(--ruoff-teal)] hover:underline" onclick="RuoffApp.openDebtsModal()">Edit debts →</button>' +
+        '</div>' +
       '</div>';
+  }
+
+  /** Loan amount needed to pay off mortgage + selected other debts + closing costs (capped by LTV). */
+  function computeSizeLoanTarget() {
+    readStateFromDom();
+    ensureMortgageDebt();
+    const needed = (Number(state.currentBalance) || 0)
+      + C.otherDebtsPaidOff(state.debts)
+      + (Number(state.closingCosts) || 0);
+    const maxLoan = C.maxLoanAmount(state.homeValue, state.debts);
+    const maxLtvPct = Math.round(C.maxLtvRatio(state.debts) * 100);
+    const target = Math.min(needed, maxLoan);
+    return {
+      needed: C.roundDollar(needed),
+      maxLoan: maxLoan,
+      maxLtvPct: maxLtvPct,
+      target: C.roundDollar(target),
+      capped: needed > maxLoan
+    };
+  }
+
+  function sizeLoanToCoverDebts() {
+    const r = computeSizeLoanTarget();
+    if (selectedOtherDebtsCount() === 0 && r.needed <= (state.currentBalance + (state.closingCosts || 0) + 1)) {
+      // Still useful for rate-and-term roll-in of costs
+    }
+    state.newLoanAmount = r.target;
+    if ($('new-loan-amt')) $('new-loan-amt').value = r.target;
+    liveUpdate();
+    if (r.capped) {
+      toast('Loan sized to max ' + r.maxLoan.toLocaleString() + ' LTV cap (needed ' + r.needed.toLocaleString() + ')', 'warn');
+    } else {
+      toast('New loan set to ' + money(r.target) + ' (mortgage + selected debts + closing costs)');
+    }
+    // Keep user in context: close debts modal so they see scenario update
+    if ($('debts-modal') && !$('debts-modal').classList.contains('hidden')) {
+      closeDebtsModal();
+    }
+    scrollToSection('scenario');
   }
 
   function openDebtsModal() {
     ensureMortgageDebt();
+    expandedDebtIndex = null;
     renderDebts();
     setModalOpen('debts-modal', true);
+    setActiveNav('debts');
   }
 
   function closeDebtsModal() {
+    // If inline edit open, discard unsaved expand (data already saved on Save)
+    expandedDebtIndex = null;
     saveToStorage();
     setModalOpen('debts-modal', false);
     liveUpdate();
@@ -785,7 +835,22 @@
     let totalPayoff = 0;
     let otherCount = 0;
 
-    // Quick-add row at top of list
+    // Toolbar: size loan + quick add
+    const toolbar = document.createElement('div');
+    toolbar.className = 'debt-list-toolbar';
+    const sizeInfo = computeSizeLoanTarget();
+    toolbar.innerHTML =
+      '<button type="button" class="size-loan-btn size-loan-btn-block" data-size-loan>' +
+        '<i class="fas fa-magic"></i> Size new loan to cover selected debts' +
+        '<span class="size-loan-amt">' + money(sizeInfo.target) + '</span>' +
+      '</button>' +
+      (sizeInfo.capped
+        ? '<p class="text-xs warn mt-1">Capped at ' + sizeInfo.maxLtvPct + '% LTV max (' + money(sizeInfo.maxLoan) + '). Needed ' + money(sizeInfo.needed) + '.</p>'
+        : '<p class="text-xs opacity-60 mt-1">Sets loan = mortgage + selected debts + closing costs</p>');
+    container.appendChild(toolbar);
+    toolbar.querySelector('[data-size-loan]').addEventListener('click', sizeLoanToCoverDebts);
+
+    // Quick-add row
     const quick = document.createElement('div');
     quick.className = 'debt-quick-add';
     quick.innerHTML =
@@ -817,16 +882,26 @@
       }
 
       const isMortgage = d.name === 'Current Mortgage';
+      const isExpanded = !isMortgage && expandedDebtIndex === i;
       const row = document.createElement('div');
       row.className = 'debt-row glass rounded-2xl p-4 sm:p-5 ' +
-        (isMortgage ? 'debt-row-mortgage' : (d.payOff ? 'debt-row-active' : 'debt-row-off'));
+        (isMortgage ? 'debt-row-mortgage' : (d.payOff ? 'debt-row-active' : 'debt-row-off')) +
+        (isExpanded ? ' debt-row-expanded' : '');
+      row.setAttribute('data-debt-index', String(i));
+
+      if (isExpanded) {
+        row.innerHTML = buildInlineEditHtml(d, i);
+        container.appendChild(row);
+        wireInlineEdit(row, i);
+        return;
+      }
 
       const meta = [];
       if (d.rate) meta.push(d.rate + '% APR');
       if (d.months) meta.push(d.months + ' mo left');
       const metaHtml = meta.length
         ? '<div class="text-xs opacity-60 mt-1">' + escapeHtml(meta.join(' · ')) + '</div>'
-        : (isMortgage ? '' : '<div class="text-xs opacity-50 mt-1">Optional: add rate for better interest savings</div>');
+        : (isMortgage ? '' : '<div class="text-xs opacity-50 mt-1">Tap Edit to update · optional rate improves interest math</div>');
 
       row.innerHTML =
         '<div class="flex gap-3 items-start">' +
@@ -855,7 +930,7 @@
               '</label>') +
           (!isMortgage
             ? '<div class="flex items-center gap-1">' +
-                '<button type="button" class="debt-action-btn" data-edit-debt="' + i + '"><i class="fas fa-pencil-alt"></i> Edit</button>' +
+                '<button type="button" class="debt-action-btn" data-inline-edit="' + i + '"><i class="fas fa-pencil-alt"></i> Edit</button>' +
                 '<button type="button" class="debt-action-btn debt-action-danger" data-remove-debt="' + i + '"><i class="fas fa-trash"></i></button>' +
               '</div>'
             : '') +
@@ -888,8 +963,10 @@
         liveUpdate();
       });
     });
-    container.querySelectorAll('[data-edit-debt]').forEach(el => {
-      el.addEventListener('click', () => editDebt(parseInt(el.getAttribute('data-edit-debt'), 10)));
+    container.querySelectorAll('[data-inline-edit]').forEach(el => {
+      el.addEventListener('click', () => {
+        expandDebtInline(parseInt(el.getAttribute('data-inline-edit'), 10));
+      });
     });
     container.querySelectorAll('[data-remove-debt]').forEach(el => {
       el.addEventListener('click', () => {
@@ -906,6 +983,104 @@
     setText('modal-total-payoff', money(totalPayoff));
     setText('modal-other-count', String(otherCount));
     updateDebtSummaryStrip();
+  }
+
+  function buildInlineEditHtml(d, i) {
+    return (
+      '<div class="inline-edit-header flex items-center justify-between gap-2 mb-3">' +
+        '<div class="font-bold text-base"><i class="fas fa-pencil-alt text-[var(--ruoff-teal)] mr-2"></i>Edit debt</div>' +
+        '<button type="button" class="text-sm opacity-60 hover:opacity-100" data-inline-cancel="' + i + '">Cancel</button>' +
+      '</div>' +
+      '<div class="space-y-3">' +
+        '<div>' +
+          '<label class="block text-xs opacity-70 mb-1">Name</label>' +
+          '<input type="text" class="input-field" data-ie-name value="' + escapeHtml(d.name || '') + '" autocomplete="off">' +
+        '</div>' +
+        '<div class="grid grid-cols-2 gap-3">' +
+          '<div><label class="block text-xs opacity-70 mb-1">Balance</label>' +
+            '<div class="dollar-wrap"><span class="prefix">$</span>' +
+            '<input type="text" inputmode="decimal" class="input-field" data-ie-bal value="' + (d.bal || '') + '" placeholder="0"></div></div>' +
+          '<div><label class="block text-xs opacity-70 mb-1">Monthly</label>' +
+            '<div class="dollar-wrap"><span class="prefix">$</span>' +
+            '<input type="text" inputmode="decimal" class="input-field" data-ie-pay value="' + (d.pay || '') + '" placeholder="0"></div></div>' +
+        '</div>' +
+        '<div class="grid grid-cols-2 gap-3">' +
+          '<div><label class="block text-xs opacity-70 mb-1">Rate % <span class="opacity-50">(optional)</span></label>' +
+            '<input type="number" step="0.1" class="input-field text-center" data-ie-rate value="' + (d.rate || '') + '" placeholder="e.g. 22.9"></div>' +
+          '<div><label class="block text-xs opacity-70 mb-1">Months left</label>' +
+            '<input type="number" class="input-field text-center" data-ie-months value="' + (d.months || '') + '" placeholder="e.g. 36"></div>' +
+        '</div>' +
+        '<div class="flex flex-wrap gap-2 pt-1">' +
+          '<button type="button" class="flex-1 py-2.5 bg-gradient-to-r from-[#00A89D] to-[#F15A29] text-white rounded-xl font-bold text-sm" data-inline-save="' + i + '">Save</button>' +
+          '<button type="button" class="py-2.5 px-4 border border-zinc-300 dark:border-white/20 rounded-xl text-sm font-medium" data-inline-cancel="' + i + '">Cancel</button>' +
+          '<button type="button" class="py-2.5 px-4 text-red-500 text-sm font-medium" data-remove-debt="' + i + '"><i class="fas fa-trash mr-1"></i>Remove</button>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function wireInlineEdit(row, i) {
+    const save = function () {
+      const name = (row.querySelector('[data-ie-name]').value || '').trim() || 'Debt';
+      const bal = parseNum(row.querySelector('[data-ie-bal]').value);
+      const pay = parseNum(row.querySelector('[data-ie-pay]').value);
+      const rate = parseNum(row.querySelector('[data-ie-rate]').value);
+      const months = parseNum(row.querySelector('[data-ie-months]').value);
+      if (bal <= 0 && pay <= 0) {
+        toast('Enter a balance or monthly payment', 'warn');
+        return;
+      }
+      const prev = state.debts[i];
+      state.debts[i] = {
+        name: name,
+        bal: bal,
+        pay: pay,
+        rate: rate,
+        months: months,
+        payOff: prev.payOff !== false,
+        type: prev.type || ''
+      };
+      expandedDebtIndex = null;
+      renderDebts();
+      liveUpdate();
+      saveToStorage();
+      toast('Debt updated');
+    };
+    row.querySelectorAll('[data-inline-save]').forEach(function (btn) {
+      btn.addEventListener('click', save);
+    });
+    row.querySelectorAll('[data-inline-cancel]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        expandedDebtIndex = null;
+        renderDebts();
+      });
+    });
+    row.querySelectorAll('[data-remove-debt]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (confirm('Remove this debt?')) removeDebt(i);
+      });
+    });
+    row.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        save();
+      }
+      if (e.key === 'Escape') {
+        expandedDebtIndex = null;
+        renderDebts();
+      }
+    });
+    setTimeout(function () {
+      const bal = row.querySelector('[data-ie-bal]');
+      if (bal) bal.focus();
+    }, 40);
+  }
+
+  function expandDebtInline(i) {
+    const d = state.debts[i];
+    if (!d || d.name === 'Current Mortgage') return;
+    expandedDebtIndex = i;
+    renderDebts();
   }
 
   function escapeHtml(s) {
@@ -1077,6 +1252,11 @@
   }
 
   function editDebt(i) {
+    // Prefer inline expand when debts list is open; fallback to modal
+    if ($('debts-modal') && !$('debts-modal').classList.contains('hidden')) {
+      expandDebtInline(i);
+      return;
+    }
     const d = state.debts[i];
     if (!d || d.name === 'Current Mortgage') return;
     editingDebtIndex = i;
@@ -1096,9 +1276,78 @@
     openAddDebtModal();
   }
 
+  // ─── Mini-nav ────────────────────────────────────────────
+  function scrollToSection(key) {
+    const map = {
+      home: 'section-home',
+      mortgage: 'section-mortgage',
+      scenario: 'section-scenario',
+      debts: 'section-scenario',
+      plan: 'section-plan'
+    };
+    if (key === 'debts') {
+      openDebtsModal();
+      return;
+    }
+    if (key === 'mortgage') {
+      const el = $(map.mortgage);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setActiveNav('mortgage');
+      return;
+    }
+    const id = map[key];
+    const el = id ? $(id) : null;
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setActiveNav(key);
+    }
+    if (key === 'plan') {
+      const results = $('results-area');
+      if (results && !results.classList.contains('hidden')) {
+        results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }
+
+  function setActiveNav(key) {
+    document.querySelectorAll('.mini-nav-btn').forEach(function (btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-nav') === key);
+    });
+  }
+
+  function initMiniNav() {
+    document.querySelectorAll('.mini-nav-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        scrollToSection(btn.getAttribute('data-nav'));
+      });
+    });
+    // Highlight section in view
+    const sections = [
+      { key: 'home', id: 'section-home' },
+      { key: 'mortgage', id: 'section-mortgage' },
+      { key: 'scenario', id: 'section-scenario' },
+      { key: 'plan', id: 'section-plan' }
+    ];
+    if ('IntersectionObserver' in window) {
+      const obs = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          const found = sections.find(function (s) { return s.id === entry.target.id; });
+          if (found) setActiveNav(found.key);
+        });
+      }, { rootMargin: '-30% 0px -50% 0px', threshold: 0.01 });
+      sections.forEach(function (s) {
+        const el = $(s.id);
+        if (el) obs.observe(el);
+      });
+    }
+  }
+
   function removeDebt(i) {
     if (state.debts[i] && state.debts[i].name === 'Current Mortgage') return;
     state.debts.splice(i, 1);
+    if (expandedDebtIndex === i) expandedDebtIndex = null;
+    else if (expandedDebtIndex != null && expandedDebtIndex > i) expandedDebtIndex -= 1;
     renderDebts();
     liveUpdate();
     toast('Debt removed');
@@ -1336,6 +1585,8 @@
 
       setResultsClientName(client.clientName);
       showTab(0);
+      $('results-area').classList.remove('hidden');
+      setActiveNav('plan');
       $('results-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
       toast('Smart Plan ready');
     } catch (e) {
@@ -1345,6 +1596,7 @@
       setResultsClientName(numbers.clientName);
       showTab(0);
       $('results-area').classList.remove('hidden');
+      setActiveNav('plan');
       toast('AI unavailable — showing calculated plan instead', 'warn');
     } finally {
       generatingPlan = false;
@@ -1755,6 +2007,7 @@
 
     updateBrandingChip();
     updateDebtSummaryStrip();
+    initMiniNav();
 
     // Debt form: clear placeholder zeros, Enter to save
     ['new-debt-balance', 'new-debt-pay', 'new-debt-rate', 'new-debt-months'].forEach(function (id) {
@@ -1797,6 +2050,9 @@
     openAddDebtModal,
     closeAddDebtModal,
     addNewDebt,
+    expandDebtInline,
+    sizeLoanToCoverDebts,
+    scrollToSection,
     clearAllData,
     showCashFlowModal,
     showDebtsPaidModal,

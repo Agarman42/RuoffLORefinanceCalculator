@@ -623,3 +623,106 @@ button[data-generate-btn]:disabled {
   opacity: 0.6;
   margin-top: 0.25rem;
 }
+
+/* Size loan CTA */
+.size-loan-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(90deg, var(--ruoff-navy), var(--ruoff-teal));
+  box-shadow: 0 4px 14px rgba(0, 43, 92, 0.25);
+  transition: transform 0.15s, filter 0.15s;
+}
+.size-loan-btn:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+.size-loan-btn-block {
+  width: 100%;
+  justify-content: space-between;
+  border-radius: 1rem;
+  padding: 0.85rem 1rem;
+  font-size: 0.9rem;
+}
+.size-loan-amt {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.2rem 0.65rem;
+  border-radius: 9999px;
+  font-feature-settings: "tnum";
+}
+.debt-list-toolbar {
+  margin-bottom: 0.5rem;
+}
+.debt-row-expanded {
+  border: 2px solid rgba(0, 168, 157, 0.5) !important;
+  box-shadow: 0 8px 28px -12px rgba(0, 168, 157, 0.45);
+}
+
+/* Sticky mini-nav */
+.mini-nav {
+  position: sticky;
+  top: 0;
+  z-index: 45;
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.45rem 0.75rem;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.dark .mini-nav {
+  background: rgba(10, 15, 28, 0.92);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+.mini-nav-btn {
+  flex: 1 0 auto;
+  min-width: 4.5rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  opacity: 0.65;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.mini-nav-btn i {
+  display: block;
+  margin: 0 auto 0.1rem;
+  font-size: 0.85rem;
+}
+.mini-nav-btn:hover {
+  opacity: 1;
+  background: rgba(0, 168, 157, 0.1);
+}
+.mini-nav-btn.active {
+  opacity: 1;
+  background: linear-gradient(90deg, var(--ruoff-teal), var(--ruoff-orange));
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 168, 157, 0.3);
+}
+
+/* Account for sticky header + mini-nav when scrolling to sections */
+[id^="section-"] {
+  scroll-margin-top: 7.5rem;
+}
+
+/* Mobile: mini-nav sits above bottom sticky results */
+@media (max-width: 767px) {
+  body {
+    padding-bottom: 5.5rem;
+  }
+  .mini-nav {
+    top: auto;
+    /* sits under main sticky header when scrolling from top; also usable mid-page */
+  }
+  .sticky-results {
+    /* room for nothing extra — mini-nav is top sticky under header on mobile too */
+  }
+}

@@ -34,6 +34,14 @@
   </div>
 </header>
 
+<nav class="mini-nav no-print" aria-label="Calculator sections">
+  <button type="button" class="mini-nav-btn active" data-nav="home"><i class="fas fa-home"></i>Home</button>
+  <button type="button" class="mini-nav-btn" data-nav="mortgage"><i class="fas fa-file-contract"></i>Mortgage</button>
+  <button type="button" class="mini-nav-btn" data-nav="scenario"><i class="fas fa-sliders"></i>Scenario</button>
+  <button type="button" class="mini-nav-btn" data-nav="debts"><i class="fas fa-credit-card"></i>Debts</button>
+  <button type="button" class="mini-nav-btn" data-nav="plan"><i class="fas fa-star"></i>Plan</button>
+</nav>
+
 <div id="toast" class="hidden fixed top-24 left-1/2 -translate-x-1/2 z-[1000] px-6 py-3 rounded-2xl shadow-2xl text-sm font-medium max-w-md text-center" role="status" aria-live="polite"></div>
 
 <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
@@ -123,7 +131,7 @@
   </section>
 
   <!-- Step 1: Home -->
-  <section class="glass rounded-2xl p-5 sm:p-8">
+  <section id="section-home" class="glass rounded-2xl p-5 sm:p-8">
     <div class="flex justify-between items-start mb-4">
       <div>
         <h3 class="text-xl font-bold flex items-center"><span class="step-pill">1</span> Home value</h3>
@@ -163,7 +171,7 @@
   </section>
 
   <!-- Step 2: Current mortgage -->
-  <section class="glass rounded-2xl p-5 sm:p-8">
+  <section id="section-mortgage" class="glass rounded-2xl p-5 sm:p-8">
     <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
       <h3 class="text-xl font-bold flex items-center"><span class="step-pill">2</span> Current mortgage</h3>
       <button type="button" onclick="RuoffApp.openMortgageModal()" class="px-5 py-2.5 bg-gradient-to-r from-[#00A89D] to-[#00b8a8] text-white rounded-xl text-sm font-semibold shadow">
@@ -192,7 +200,7 @@
   </section>
 
   <!-- Step 3: Scenario -->
-  <section class="glass rounded-2xl p-5 sm:p-8">
+  <section id="section-scenario" class="glass rounded-2xl p-5 sm:p-8">
     <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
       <h3 class="text-xl font-bold flex items-center"><span class="step-pill">3</span> New refinance scenario</h3>
       <span class="debts-btn-wrap">
@@ -307,7 +315,7 @@
   </section>
 
   <!-- Generate -->
-  <section>
+  <section id="section-plan">
     <button type="button" data-generate-btn onclick="RuoffApp.generateSmartPlan()"
             class="group w-full py-8 sm:py-10 text-xl sm:text-2xl font-black tracking-tight
                    bg-gradient-to-r from-[#00A89D] via-[#F15A29] to-[#002B5C]
@@ -361,7 +369,7 @@
   <a href="http://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/141868" target="_blank" rel="noopener" class="text-[#00A89D] font-medium hover:underline">NMLS Consumer Access</a>.
   Equal Housing Lender. NMLS#141868.
   <p id="app-version" class="mt-6 text-xs font-mono opacity-80 tracking-wide">
-    Ruoff Smart Savings Calculator · LO · v2.1.0 · 2026-07-16
+    Ruoff Smart Savings Calculator · LO · v2.2.0 · 2026-07-16
   </p>
 </footer>
 
