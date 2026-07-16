@@ -71,11 +71,7 @@
 
   <div id="validation-banner" class="validation-banner hidden" role="status"></div>
 
-  <div id="lo-contact-banner" class="hidden glass rounded-[1.25rem] px-5 py-3 flex items-center gap-3 border border-[#00A89D]/30">
-    <i class="fas fa-user-check text-[#00A89D]"></i>
-    <p id="lo-contact-banner-text" class="text-sm font-medium"></p>
-  </div>
-
+  <div id="lo-contact-banner" class="lo-contact-banner hidden" role="region" aria-label="Your loan officer"></div>
   <section class="wizard-panel active-step space-y-6" data-wizard-step="0">
   <div class="wizard-only wizard-step-card glass glass-hero rounded-[1.75rem] p-6 sm:p-8">
     <p class="label-caps">About 2 minutes</p>
@@ -320,6 +316,8 @@
     <div id="half-savings-tip" class="hidden mt-3 text-sm glass rounded-2xl p-4 border border-emerald-400/30"></div>
     <div id="shorter-term-savings" class="mt-4 glass rounded-2xl p-5 text-center cursor-pointer" role="button" tabindex="0" onclick="RuoffApp.showInterestModal()" onkeydown="if(event.key==='Enter')RuoffApp.showInterestModal()"></div>
   
+    <div id="amort-chart" class="amort-chart glass glass-hero rounded-[1.75rem] p-5 mt-6"></div>
+
     <div class="scenario-compare-panel glass glass-hero rounded-[1.75rem] p-5 mt-6">
       <div class="label-caps">Compare options</div>
       <h3 class="text-lg font-bold mb-3">Save scenarios to compare</h3>
@@ -404,7 +402,7 @@
   Ruoff Mortgage Company, Inc., d/b/a Ruoff Mortgage. Equal Housing Lender. NMLS#141868.
   <a href="http://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/141868" target="_blank" rel="noopener" class="text-[#00A89D] font-medium hover:underline">Licensing</a>
   <p id="app-version" class="mt-6 text-xs font-mono opacity-80 tracking-wide">
-    Ruoff Smart Savings Calculator · Borrower · v3.2.0 · 2026-07-16
+    Ruoff Smart Savings Calculator · Borrower · v3.3.0 · 2026-07-16
   </p>
 </footer>
 

@@ -1624,3 +1624,131 @@ body.mode-guided .wizard-only.wizard-step-card {
   margin-left: 0 !important;
   margin-right: 0 !important;
 }
+
+/* ── v3.3: amortization chart + LO brand theme ─────────── */
+.amort-chart { width: 100%; }
+.amort-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.amort-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0.15rem 0 0;
+}
+.amort-legend {
+  display: flex;
+  gap: 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.amort-leg { display: inline-flex; align-items: center; gap: 0.35rem; }
+.amort-leg::before {
+  content: '';
+  width: 1.1rem;
+  height: 3px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.amort-leg-keep::before { background: #94a3b8; }
+.amort-leg-refi::before { background: var(--ruoff-teal); }
+.amort-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  color: var(--text);
+}
+.amort-axis {
+  font-size: 9px;
+  fill: currentColor;
+  opacity: 0.45;
+  font-family: var(--font);
+  font-weight: 600;
+}
+.amort-foot {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.5rem 1rem;
+  margin-top: 0.85rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.amort-foot strong { color: var(--text); }
+
+/* LO branding color inputs */
+.brand-color-input {
+  width: 100%;
+  height: 2.75rem;
+  padding: 0.25rem;
+  border-radius: 0.85rem;
+  border: 1.5px solid rgba(0, 168, 157, 0.3);
+  background: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+}
+.dark .brand-color-input {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Borrower LO banner */
+.lo-contact-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1.1rem;
+  border-radius: 1.25rem;
+  background: color-mix(in srgb, var(--ruoff-teal) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ruoff-teal) 35%, transparent);
+  box-shadow: var(--shadow-soft);
+}
+.lo-contact-banner.hidden { display: none !important; }
+.lo-avatar {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 9999px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--ruoff-teal), var(--ruoff-orange));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--ruoff-teal) 35%, transparent);
+}
+.lo-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.lo-avatar-initials {
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+}
+.lo-banner-cta {
+  flex-shrink: 0;
+  padding: 0.45rem 0.9rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #fff;
+  background: var(--ruoff-teal);
+  text-decoration: none;
+}
+.lo-banner-cta:hover { filter: brightness(1.08); }
+
+body.lo-branded .btn-primary {
+  background: linear-gradient(90deg, var(--ruoff-teal), color-mix(in srgb, var(--ruoff-teal) 70%, var(--ruoff-orange)));
+}
+body.lo-branded .cta-generate {
+  background: linear-gradient(105deg, var(--ruoff-teal) 0%, var(--ruoff-orange) 50%, var(--ruoff-navy) 100%);
+  background-size: 200% 200%;
+}
+body.lo-branded .step-pill {
+  background: linear-gradient(135deg, var(--ruoff-teal), color-mix(in srgb, var(--ruoff-teal) 60%, #0d9488));
+}

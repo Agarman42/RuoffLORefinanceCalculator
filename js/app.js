@@ -87,8 +87,8 @@
     projectCash: 30000,
     debts: [],
     client: { name: '', email: '', phone: '', notes: '' },
-    branding: { name: '', nmls: '', email: '', cell: '' },
-    loContact: { name: '', email: '', phone: '', nmls: '' } // borrower shared-link LO
+    branding: { name: '', nmls: '', email: '', cell: '', color: '#00A89D', accent: '#F15A29', photo: '' },
+    loContact: { name: '', email: '', phone: '', nmls: '', color: '', accent: '', photo: '' }
   };
 
   let lastScenario = null;
@@ -223,12 +223,15 @@
       name: ($('branding-name') && $('branding-name').value.trim()) || '',
       nmls: ($('branding-nmls') && $('branding-nmls').value.trim()) || '',
       email: ($('branding-email') && $('branding-email').value.trim()) || '',
-      cell: ($('branding-cell') && $('branding-cell').value.trim()) || ''
+      cell: ($('branding-cell') && $('branding-cell').value.trim()) || '',
+      color: ($('branding-color') && $('branding-color').value) || '#00A89D',
+      accent: ($('branding-accent') && $('branding-accent').value) || '#F15A29',
+      photo: ($('branding-photo') && $('branding-photo').value.trim()) || ''
     };
     try { localStorage.setItem(BRANDING_KEY, JSON.stringify(state.branding)); } catch (e) {}
     updateBrandingChip();
     toggleAccordion('branding-content', 'branding-chevron', false);
-    toast('Branding saved — it will appear on plans and emails.');
+    toast('Branding saved — it will appear on plans, emails, and borrower links.');
   }
 
   function loadBranding() {
@@ -240,6 +243,9 @@
     if ($('branding-nmls')) $('branding-nmls').value = state.branding.nmls || '';
     if ($('branding-email')) $('branding-email').value = state.branding.email || '';
     if ($('branding-cell')) $('branding-cell').value = state.branding.cell || '';
+    if ($('branding-color')) $('branding-color').value = state.branding.color || '#00A89D';
+    if ($('branding-accent')) $('branding-accent').value = state.branding.accent || '#F15A29';
+    if ($('branding-photo')) $('branding-photo').value = state.branding.photo || '';
   }
 
   function saveToStorage() {
@@ -283,17 +289,84 @@
       name: params.get('loName') || params.get('lo') || '',
       email: params.get('loEmail') || params.get('email') || '',
       phone: params.get('loPhone') || params.get('phone') || '',
-      nmls: params.get('loNmls') || params.get('nmls') || ''
+      nmls: params.get('loNmls') || params.get('nmls') || '',
+      color: params.get('loColor') || params.get('color') || '',
+      accent: params.get('loAccent') || params.get('accent') || '',
+      photo: params.get('loPhoto') || params.get('photo') || ''
     };
-    // Fall back to branding if borrower opens LO's saved branding somehow — skip
-    if (MODE === 'borrower' && $('lo-contact-banner')) {
-      if (state.loContact.name || state.loContact.email) {
-        $('lo-contact-banner').classList.remove('hidden');
-        $('lo-contact-banner-text').textContent =
-          'Working with ' + (state.loContact.name || 'your loan officer') +
-          (state.loContact.nmls ? ' · NMLS ' + state.loContact.nmls : '');
-      }
+    if (MODE === 'borrower') {
+      applyLoBrandTheme(state.loContact);
+      renderLoContactBanner();
     }
+  }
+
+  function safeHexColor(val, fallback) {
+    const v = String(val || '').trim();
+    if (/^#[0-9A-Fa-f]{6}$/.test(v)) return v;
+    if (/^#[0-9A-Fa-f]{3}$/.test(v)) {
+      return '#' + v[1] + v[1] + v[2] + v[2] + v[3] + v[3];
+    }
+    return fallback;
+  }
+
+  function applyLoBrandTheme(lo) {
+    if (!lo) return;
+    const primary = safeHexColor(lo.color, '');
+    const accent = safeHexColor(lo.accent, '');
+    const root = document.documentElement;
+    if (primary) {
+      root.style.setProperty('--ruoff-teal', primary);
+      root.style.setProperty('--ruoff-teal-bright', primary);
+      document.body.classList.add('lo-branded');
+    }
+    if (accent) {
+      root.style.setProperty('--ruoff-orange', accent);
+      document.body.classList.add('lo-branded');
+    }
+    // Header gradient follows brand colors
+    const header = document.querySelector('.app-header');
+    if (header && (primary || accent)) {
+      const c1 = primary || '#002B5C';
+      const c2 = accent || primary || '#00A89D';
+      header.style.background = 'linear-gradient(105deg, #002B5C 0%, ' + c1 + ' 48%, ' + c2 + ' 100%)';
+    }
+  }
+
+  function initialsFromName(name) {
+    const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return 'LO';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  function renderLoContactBanner() {
+    const banner = $('lo-contact-banner');
+    if (!banner || MODE !== 'borrower') return;
+    const lo = state.loContact;
+    if (!lo.name && !lo.email && !lo.photo) {
+      banner.classList.add('hidden');
+      return;
+    }
+    banner.classList.remove('hidden');
+    const photo = lo.photo;
+    const avatar = photo
+      ? '<img class="lo-avatar-img" src="' + escapeHtml(photo) + '" alt="">'
+      : '<span class="lo-avatar-initials">' + escapeHtml(initialsFromName(lo.name)) + '</span>';
+    banner.innerHTML =
+      '<div class="lo-avatar">' + avatar + '</div>' +
+      '<div class="lo-banner-text min-w-0 flex-1">' +
+        '<div class="font-bold truncate">' + escapeHtml(lo.name || 'Your loan officer') + '</div>' +
+        '<div class="text-sm opacity-75 truncate">' +
+          (lo.nmls ? 'NMLS ' + escapeHtml(lo.nmls) : '') +
+          (lo.nmls && lo.phone ? ' · ' : '') +
+          (lo.phone ? escapeHtml(lo.phone) : '') +
+          ((lo.nmls || lo.phone) && lo.email ? ' · ' : '') +
+          (lo.email ? escapeHtml(lo.email) : '') +
+        '</div>' +
+      '</div>' +
+      (lo.email
+        ? '<a class="lo-banner-cta" href="mailto:' + encodeURIComponent(lo.email) + '">Email</a>'
+        : '');
   }
 
   function setResultsClientName(name) {
@@ -581,7 +654,101 @@
     updateStepTip(scenario);
     maybeCelebrateWin(scenario);
     renderScenarioCompare();
+    updateAmortizationChart(scenario);
     saveToStorage();
+  }
+
+  // ─── Amortization chart ──────────────────────────────────
+  function updateAmortizationChart(scenario) {
+    const wrap = $('amort-chart');
+    if (!wrap || !scenario) return;
+
+    const keep = C.amortizationBalanceSeries(
+      scenario.currentBalance,
+      scenario.currentRate,
+      scenario.yearsRemaining,
+      12
+    );
+    const refi = C.amortizationBalanceSeries(
+      scenario.newLoanAmount,
+      scenario.newRate,
+      scenario.newTerm,
+      12
+    );
+
+    const maxBal = Math.max(
+      scenario.currentBalance || 0,
+      scenario.newLoanAmount || 0,
+      1
+    );
+    const maxYears = Math.max(
+      scenario.yearsRemaining || 0,
+      scenario.newTerm || 0,
+      1
+    );
+
+    const W = 400;
+    const H = 168;
+    const pad = { t: 16, r: 12, b: 28, l: 44 };
+    const plotW = W - pad.l - pad.r;
+    const plotH = H - pad.t - pad.b;
+
+    function xOf(year) {
+      return pad.l + (year / maxYears) * plotW;
+    }
+    function yOf(bal) {
+      return pad.t + plotH - (bal / maxBal) * plotH;
+    }
+
+    function toPolyline(series) {
+      return series.points.map(function (pt) {
+        return xOf(pt.year).toFixed(1) + ',' + yOf(pt.balance).toFixed(1);
+      }).join(' ');
+    }
+
+    const keepLine = toPolyline(keep);
+    const refiLine = toPolyline(refi);
+
+    // Grid years: 0, mid, end
+    const ticks = [0, Math.round(maxYears / 2), Math.round(maxYears)];
+    const grid = ticks.map(function (y) {
+      const x = xOf(y);
+      return '<line x1="' + x + '" y1="' + pad.t + '" x2="' + x + '" y2="' + (pad.t + plotH) +
+        '" stroke="currentColor" stroke-opacity="0.08"/>' +
+        '<text x="' + x + '" y="' + (H - 8) + '" text-anchor="middle" class="amort-axis">' + y + 'y</text>';
+    }).join('');
+
+    const yLabels = [0, 0.5, 1].map(function (f) {
+      const bal = maxBal * (1 - f);
+      const y = pad.t + plotH * f;
+      return '<text x="' + (pad.l - 6) + '" y="' + (y + 4) + '" text-anchor="end" class="amort-axis">' +
+        (bal >= 1000 ? Math.round(bal / 1000) + 'k' : Math.round(bal)) + '</text>';
+    }).join('');
+
+    wrap.innerHTML =
+      '<div class="amort-head">' +
+        '<div><div class="label-caps">Loan balance over time</div>' +
+        '<h3 class="amort-title">Keep current vs proposed refinance</h3></div>' +
+        '<div class="amort-legend">' +
+          '<span class="amort-leg amort-leg-keep">Keep current</span>' +
+          '<span class="amort-leg amort-leg-refi">Proposed refi</span>' +
+        '</div>' +
+      '</div>' +
+      '<svg class="amort-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Amortization balance chart">' +
+        '<rect x="' + pad.l + '" y="' + pad.t + '" width="' + plotW + '" height="' + plotH +
+          '" fill="currentColor" fill-opacity="0.03" rx="8"/>' +
+        grid + yLabels +
+        '<polyline fill="none" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="' + keepLine + '"/>' +
+        '<polyline fill="none" stroke="var(--ruoff-teal)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="' + refiLine + '"/>' +
+      '</svg>' +
+      '<div class="amort-foot">' +
+        '<div>Interest left if you keep loan: <strong class="number">' + money(scenario.mortgageInterest.keepInterest) + '</strong></div>' +
+        '<div>Interest on proposed loan: <strong class="number">' + money(scenario.mortgageInterest.refiInterest) + '</strong></div>' +
+        '<div class="' + (scenario.mortgageInterest.savings >= 0 ? 'pos' : 'neg') + '">' +
+          (scenario.mortgageInterest.savings >= 0 ? 'You save ' : 'You pay ') +
+          '<strong class="number">' + money(Math.abs(scenario.mortgageInterest.savings)) + '</strong> interest' +
+        '</div>' +
+      '</div>';
   }
 
   function maybeCelebrateWin(scenario) {
@@ -2229,15 +2396,23 @@
   }
 
   function copyBorrowerLink() {
+    // Pull latest branding fields even if not re-saved
+    if ($('branding-name')) {
+      state.branding.name = $('branding-name').value.trim() || state.branding.name;
+      state.branding.nmls = $('branding-nmls') ? $('branding-nmls').value.trim() : state.branding.nmls;
+      state.branding.email = $('branding-email') ? $('branding-email').value.trim() : state.branding.email;
+      state.branding.cell = $('branding-cell') ? $('branding-cell').value.trim() : state.branding.cell;
+      state.branding.color = $('branding-color') ? $('branding-color').value : state.branding.color;
+      state.branding.accent = $('branding-accent') ? $('branding-accent').value : state.branding.accent;
+      state.branding.photo = $('branding-photo') ? $('branding-photo').value.trim() : state.branding.photo;
+    }
     if (!state.branding.email && !state.branding.name) {
       toast('Save your branding first so the link includes your contact info', 'warn');
     }
     let base = window.location.origin + '/borrower.html';
-    // If path still ends with index.html (local file or some hosts)
     if (/index\.html$/i.test(window.location.pathname)) {
       base = window.location.origin + window.location.pathname.replace(/index\.html$/i, 'borrower.html');
     } else if (window.location.pathname && window.location.pathname !== '/') {
-      // Keep directory context when not at root
       const dir = window.location.pathname.replace(/\/[^/]*$/, '/');
       base = window.location.origin + dir + 'borrower.html';
     }
@@ -2246,9 +2421,12 @@
     if (state.branding.email) params.set('loEmail', state.branding.email);
     if (state.branding.cell) params.set('loPhone', state.branding.cell);
     if (state.branding.nmls) params.set('loNmls', state.branding.nmls);
+    if (state.branding.color) params.set('loColor', state.branding.color);
+    if (state.branding.accent) params.set('loAccent', state.branding.accent);
+    if (state.branding.photo) params.set('loPhoto', state.branding.photo);
     const url = base + (params.toString() ? '?' + params.toString() : '');
     navigator.clipboard.writeText(url).then(function () {
-      toast('Borrower link copied — Contact LO will email you');
+      toast('Branded borrower link copied');
     }).catch(function () {
       prompt('Copy this borrower link:', url);
     });

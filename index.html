@@ -111,9 +111,22 @@
           <label class="block text-xs opacity-70 mb-1">Cell</label>
           <input id="branding-cell" type="tel" class="input-field" placeholder="(260) 555-0100">
         </div>
+        <div>
+          <label class="block text-xs opacity-70 mb-1">Brand color</label>
+          <input id="branding-color" type="color" value="#00A89D" class="brand-color-input" title="Primary brand color for borrower links">
+        </div>
+        <div>
+          <label class="block text-xs opacity-70 mb-1">Accent color</label>
+          <input id="branding-accent" type="color" value="#F15A29" class="brand-color-input" title="Accent color">
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-xs opacity-70 mb-1">Headshot URL <span class="opacity-50">(optional)</span></label>
+          <input id="branding-photo" type="url" class="input-field" placeholder="https://…/your-photo.jpg">
+          <p class="debt-form-hint">Included on the borrower link so clients see you, not a generic page.</p>
+        </div>
         <div class="sm:col-span-2 flex flex-wrap gap-3 justify-end">
           <button type="button" onclick="RuoffApp.copyBorrowerLink()" class="px-4 py-2 text-sm font-medium border border-zinc-300 dark:border-white/20 rounded-xl hover:bg-black/5 dark:hover:bg-white/10">
-            <i class="fas fa-link mr-1"></i> Copy borrower link
+            <i class="fas fa-link mr-1"></i> Copy branded borrower link
           </button>
           <button type="button" onclick="RuoffApp.saveBranding()" class="px-5 py-2 text-sm font-bold bg-gradient-to-r from-[#00A89D] to-[#F15A29] text-white rounded-xl">
             Save branding
@@ -391,6 +404,8 @@
 
     <div id="shorter-term-savings" class="mt-4 glass rounded-2xl p-5 text-center cursor-pointer" role="button" tabindex="0" onclick="RuoffApp.showInterestModal()" onkeydown="if(event.key==='Enter')RuoffApp.showInterestModal()"></div>
 
+    <div id="amort-chart" class="amort-chart glass glass-hero rounded-[1.75rem] p-5 mt-6"></div>
+
     <div class="scenario-compare-panel glass glass-hero rounded-[1.75rem] p-5 mt-6">
       <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
         <div>
@@ -503,7 +518,7 @@
   <a href="http://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/141868" target="_blank" rel="noopener" class="text-[#00A89D] font-medium hover:underline">NMLS Consumer Access</a>.
   Equal Housing Lender. NMLS#141868.
   <p id="app-version" class="mt-6 text-xs font-mono opacity-80 tracking-wide">
-    Ruoff Smart Savings Calculator · LO · v3.2.0 · 2026-07-16
+    Ruoff Smart Savings Calculator · LO · v3.3.0 · 2026-07-16
   </p>
 </footer>
 </div><!-- /.app-shell -->

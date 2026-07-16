@@ -105,6 +105,13 @@ const short = C.shorterTermInterestSavings(320000, 5.875, 15);
 assert(short != null && short > 0, '15yr saves vs 30yr');
 assert(C.shorterTermInterestSavings(320000, 5.875, 30) === null, '30yr → null');
 
+console.log('\nAmortization series');
+const series = C.amortizationBalanceSeries(320000, 6.75, 27, 12);
+assert(series.points.length > 5, 'yearly points exist');
+assert(series.points[0].balance === 320000, 'starts at principal');
+assert(series.points[series.points.length-1].balance < 1000, 'ends near zero (got '+series.points[series.points.length-1].balance+')');
+assert(series.payment > 0, 'payment positive');
+
 console.log('\nCanonical numbers');
 const canon = C.buildCanonicalNumbers(s, { clientName: 'Test' });
 assert(canon.currentPi === s.oldPi, 'canonical matches scenario');

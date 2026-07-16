@@ -378,6 +378,49 @@
     };
   }
 
+  /**
+   * Full amortization path sampled for charts.
+   * Returns yearly (or custom) balance points plus totals.
+   */
+  function amortizationBalanceSeries(principal, annualRate, years, sampleEveryMonths) {
+    const p0 = Number(principal) || 0;
+    const yrs = Number(years) || 0;
+    const step = Math.max(1, Number(sampleEveryMonths) || 12);
+    if (p0 <= 0 || yrs <= 0) {
+      return { payment: 0, points: [{ month: 0, year: 0, balance: 0 }], totalInterest: 0, months: 0 };
+    }
+    const payment = calculateMonthlyPayment(p0, annualRate, yrs);
+    const r = (Number(annualRate) || 0) / 100 / 12;
+    const n = Math.round(yrs * 12);
+    let bal = p0;
+    let totalInterest = 0;
+    const points = [{ month: 0, year: 0, balance: roundMoney(bal) }];
+    let m = 0;
+    while (m < n && bal > 0.01) {
+      m++;
+      const interest = bal * r;
+      totalInterest += interest;
+      let principalPaid = payment - interest;
+      if (principalPaid <= 0) {
+        // interest-only / invalid
+        break;
+      }
+      if (principalPaid > bal) principalPaid = bal;
+      bal -= principalPaid;
+      if (bal < 0.01) bal = 0;
+      if (m % step === 0 || m === n || bal === 0) {
+        points.push({ month: m, year: roundMoney(m / 12), balance: roundMoney(bal) });
+      }
+      if (bal === 0) break;
+    }
+    return {
+      payment: roundMoney(payment),
+      points: points,
+      totalInterest: roundDollar(totalInterest),
+      months: m
+    };
+  }
+
   /** Amortization with optional extra principal each month */
   function simulatePaydown(principal, annualRate, years, extraMonthly) {
     let bal = Number(principal) || 0;
@@ -545,6 +588,7 @@
     consumerDebtInterestAvoided: consumerDebtInterestAvoided,
     computeScenario: computeScenario,
     simulatePaydown: simulatePaydown,
+    amortizationBalanceSeries: amortizationBalanceSeries,
     formatMoney: formatMoney,
     applyPreset: applyPreset,
     buildCanonicalNumbers: buildCanonicalNumbers
