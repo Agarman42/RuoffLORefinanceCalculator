@@ -1827,18 +1827,21 @@ body.printing-onepager .meeting-strip {
   border: 1px solid #e2e8f0;
   background: #f8fafc;
 }
+/* Portrait oval — shows more of headshot than a circle crop */
 .op-lo-photo {
-  width: 3.25rem;
-  height: 3.25rem;
-  border-radius: 9999px;
+  width: 3.15rem;
+  height: 3.85rem;
+  border-radius: 50%;
   object-fit: cover;
+  object-position: center 18%;
   flex-shrink: 0;
   border: 2px solid var(--op-brand, #00A89D);
+  background: #e2e8f0;
 }
 .op-lo-initials {
-  width: 3.25rem;
-  height: 3.25rem;
-  border-radius: 9999px;
+  width: 3.15rem;
+  height: 3.85rem;
+  border-radius: 50%;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -2115,10 +2118,11 @@ body.mode-guided .wizard-only.wizard-step-card {
   box-shadow: var(--shadow-soft);
 }
 .lo-contact-banner.hidden { display: none !important; }
+/* Portrait oval headshot (banner + anywhere else using this class) */
 .lo-avatar {
-  width: 3rem;
-  height: 3rem;
-  border-radius: 9999px;
+  width: 2.85rem;
+  height: 3.5rem;
+  border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
   background: linear-gradient(135deg, var(--ruoff-teal), var(--ruoff-orange));
@@ -2131,6 +2135,7 @@ body.mode-guided .wizard-only.wizard-step-card {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center 18%;
 }
 .lo-avatar-initials {
   color: #fff;
