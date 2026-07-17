@@ -635,12 +635,44 @@
   </div>
 </div>
 
-<div id="loading-modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[999]">
-  <div class="glass max-w-md w-full mx-4 rounded-2xl p-10 text-center">
-    <img src="https://2759433.fs1.hubspotusercontent-na1.net/hubfs/2759433/Ruoff_Mortgage_FC-Jan-18-2026-05-19-19-8281-AM.png" alt="" class="h-16 mx-auto mb-6">
-    <div class="w-12 h-12 border-4 border-[#00A89D]/30 border-t-[#00A89D] rounded-full animate-spin mx-auto mb-6"></div>
-    <h3 class="text-xl font-bold mb-2">Building your personalized plan…</h3>
-    <p class="text-sm opacity-70">Grounded in the numbers you entered</p>
+<div id="loading-modal" class="hidden fixed inset-0 z-[999] flex items-center justify-center p-4 plan-loading-overlay" role="dialog" aria-modal="true" aria-labelledby="plan-loading-title" aria-busy="true">
+  <div class="plan-loading-card modal-enter" onclick="event.stopPropagation()">
+    <div class="plan-loading-brand">
+      <img src="https://2759433.fs1.hubspotusercontent-na1.net/hubfs/2759433/Ruoff_Mortgage_FC-Jan-18-2026-05-19-19-8281-AM.png" alt="Ruoff Mortgage">
+    </div>
+    <div class="plan-loading-orb" aria-hidden="true">
+      <span class="plan-loading-ring"></span>
+      <i class="fas fa-wand-magic-sparkles"></i>
+    </div>
+    <h3 id="plan-loading-title" class="plan-loading-title">Building your personalized plan</h3>
+    <p id="plan-loading-sub" class="plan-loading-sub">Grounded in the numbers you entered — nothing invented.</p>
+
+    <div class="plan-loading-kpis" id="plan-loading-kpis" aria-label="Numbers used for this plan">
+      <div class="plan-kpi">
+        <span class="plan-kpi-label">Cash flow</span>
+        <span id="plan-loading-cf" class="plan-kpi-value number">—</span>
+      </div>
+      <div class="plan-kpi">
+        <span class="plan-kpi-label">Proposed loan</span>
+        <span id="plan-loading-loan" class="plan-kpi-value number">—</span>
+      </div>
+      <div class="plan-kpi">
+        <span class="plan-kpi-label">At closing</span>
+        <span id="plan-loading-cash" class="plan-kpi-value number">—</span>
+      </div>
+    </div>
+
+    <div class="plan-loading-progress" aria-hidden="true">
+      <div id="plan-loading-bar" class="plan-loading-bar"></div>
+    </div>
+    <p id="plan-loading-status" class="plan-loading-status" aria-live="polite">Locking in your scenario numbers…</p>
+
+    <ol class="plan-loading-steps" id="plan-loading-steps">
+      <li data-plan-step="0" class="active"><span class="pls-dot">1</span> Lock numbers</li>
+      <li data-plan-step="1"><span class="pls-dot">2</span> Compare options</li>
+      <li data-plan-step="2"><span class="pls-dot">3</span> Write plan</li>
+      <li data-plan-step="3"><span class="pls-dot">4</span> Finish</li>
+    </ol>
   </div>
 </div>
 

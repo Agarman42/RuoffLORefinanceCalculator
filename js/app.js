@@ -2140,6 +2140,101 @@
     setModalOpen('help-modal', false);
   }
 
+  // ─── Smart Plan loading modal ────────────────────────────
+  let planLoadingTimer = null;
+  let planLoadingStep = 0;
+
+  const PLAN_LOADING_STATUSES = MODE === 'borrower'
+    ? [
+        'Locking in your scenario numbers…',
+        'Comparing rate-and-term vs debt payoff options…',
+        'Writing a clear plan in plain language…',
+        'Almost done — assembling your summary…'
+      ]
+    : [
+        'Locking in your scenario numbers…',
+        'Comparing rate-and-term vs debt payoff alternatives…',
+        'Writing client narrative, scripts, and follow-up…',
+        'Assembling tabs for the meeting…'
+      ];
+
+  function fillPlanLoadingKpis(scenario) {
+    const s = scenario || lastScenario;
+    if (!s) return;
+    const cf = s.monthlyCashFlowChange;
+    const cfEl = $('plan-loading-cf');
+    if (cfEl) {
+      cfEl.textContent = (cf > 0 ? '+' : '') + money(cf);
+      cfEl.className = 'plan-kpi-value number ' + (cf > 0 ? 'pos' : cf < 0 ? 'neg' : '');
+    }
+    setText('plan-loading-loan', money(s.newLoanAmount));
+    const cashEl = $('plan-loading-cash');
+    if (cashEl) {
+      cashEl.textContent = s.cashAtClosing === 0
+        ? 'Even'
+        : ((s.isCashBack ? 'Back ' : 'Due ') + money(Math.abs(s.cashAtClosing)));
+    }
+  }
+
+  function setPlanLoadingStep(step) {
+    planLoadingStep = Math.max(0, Math.min(PLAN_LOADING_STATUSES.length - 1, step));
+    const bar = $('plan-loading-bar');
+    if (bar) {
+      const pct = 12 + (planLoadingStep / (PLAN_LOADING_STATUSES.length - 1)) * 78;
+      bar.style.width = pct + '%';
+    }
+    const status = $('plan-loading-status');
+    if (status) {
+      status.classList.add('is-fading');
+      setTimeout(function () {
+        status.textContent = PLAN_LOADING_STATUSES[planLoadingStep] || PLAN_LOADING_STATUSES[0];
+        status.classList.remove('is-fading');
+      }, 160);
+    }
+    document.querySelectorAll('#plan-loading-steps [data-plan-step]').forEach(function (li) {
+      const i = parseInt(li.getAttribute('data-plan-step'), 10);
+      li.classList.toggle('active', i === planLoadingStep);
+      li.classList.toggle('done', i < planLoadingStep);
+      const dot = li.querySelector('.pls-dot');
+      if (dot) {
+        if (i < planLoadingStep) {
+          dot.innerHTML = '<i class="fas fa-check" style="font-size:0.6rem"></i>';
+        } else {
+          dot.textContent = String(i + 1);
+        }
+      }
+    });
+  }
+
+  function startPlanLoadingUI(scenario) {
+    fillPlanLoadingKpis(scenario);
+    setPlanLoadingStep(0);
+    const bar = $('plan-loading-bar');
+    if (bar) bar.style.width = '10%';
+    clearInterval(planLoadingTimer);
+    let step = 0;
+    planLoadingTimer = setInterval(function () {
+      step = Math.min(step + 1, PLAN_LOADING_STATUSES.length - 1);
+      setPlanLoadingStep(step);
+      if (step >= PLAN_LOADING_STATUSES.length - 1) {
+        clearInterval(planLoadingTimer);
+        planLoadingTimer = null;
+      }
+    }, 2200);
+  }
+
+  function stopPlanLoadingUI(complete) {
+    clearInterval(planLoadingTimer);
+    planLoadingTimer = null;
+    if (complete) {
+      const bar = $('plan-loading-bar');
+      if (bar) bar.style.width = '100%';
+      setPlanLoadingStep(PLAN_LOADING_STATUSES.length - 1);
+      const status = $('plan-loading-status');
+      if (status) status.textContent = MODE === 'borrower' ? 'Plan ready' : 'Smart Plan ready';
+    }
+  }
+
   // ─── AI plan generation ──────────────────────────────────
   async function generateSmartPlan() {
     if (generatingPlan) return;
@@ -2157,6 +2252,7 @@
       btn.classList.add('opacity-70', 'pointer-events-none');
     });
     const modal = $('loading-modal');
+    startPlanLoadingUI(lastScenario);
     if (modal) setModalOpen('loading-modal', true);
 
     const client = collectClient();
@@ -2244,9 +2340,11 @@
 
     try {
       $('results-area').classList.remove('hidden');
+      // Keep results area calm while the modal carries the progress UI
       $('tab-content').innerHTML =
-        '<div class="text-center py-24"><i class="fas fa-spinner fa-spin text-5xl text-[var(--ruoff-teal)]"></i>' +
-        '<p class="mt-6 text-xl">Building your Smart Plan from the calculated numbers...</p></div>';
+        '<div class="text-center py-16 opacity-70">' +
+        '<p class="text-sm font-semibold">Generating Smart Plan…</p>' +
+        '<p class="text-xs mt-2 opacity-70">Your locked numbers stay on screen in the progress modal.</p></div>';
 
       const data = await callGrokAPI({
         model: 'grok-4-1-fast-reasoning',
@@ -2289,6 +2387,9 @@
       showTab(0);
       $('results-area').classList.remove('hidden');
       setActiveNav('plan');
+      stopPlanLoadingUI(true);
+      // Brief beat so the full progress bar is visible before close
+      await new Promise(function (r) { setTimeout(r, 280); });
       $('results-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
       toast('Smart Plan ready');
       celebrateGenerateSuccess();
@@ -2300,10 +2401,13 @@
       showTab(0);
       $('results-area').classList.remove('hidden');
       setActiveNav('plan');
+      stopPlanLoadingUI(true);
+      await new Promise(function (r) { setTimeout(r, 200); });
       toast('AI unavailable — showing calculated plan instead', 'warn');
       celebrateGenerateSuccess();
     } finally {
       generatingPlan = false;
+      stopPlanLoadingUI(false);
       if (modal) setModalOpen('loading-modal', false);
       document.querySelectorAll('[data-generate-btn]').forEach(function (btn) {
         btn.disabled = false;
