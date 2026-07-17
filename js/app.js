@@ -961,15 +961,47 @@
     }
     if (lastScenario) updateStepTip(lastScenario);
     if (!options.silent) dismissResumeBanner();
-    // Scroll active panel into view (skip on silent restore)
-    if (!options.silent) {
-      const active = document.querySelector('.wizard-panel.active-step');
-      if (active && experienceMode === 'guided') {
-        setTimeout(function () {
-          active.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 50);
-      }
+    // Always land at the top of the new step (skip on silent restore / init)
+    if (!options.silent && experienceMode === 'guided') {
+      scrollWizardStepIntoView();
     }
+  }
+
+  /**
+   * Scroll so the new wizard step starts at the top of the viewport
+   * (just below the sticky header). Runs after layout so panel height is correct.
+   */
+  function scrollWizardStepIntoView() {
+    if (experienceMode !== 'guided') return;
+
+    const reduceMotion = window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const behavior = reduceMotion ? 'auto' : 'smooth';
+
+    function targetY() {
+      // Mode bar + rail + step: land so the progress rail is under the header
+      const rail = $('wizard-rail');
+      const active = document.querySelector('.wizard-panel.active-step');
+      const target = (rail && rail.offsetParent !== null) ? rail : active;
+      if (!target) return 0;
+      const header = document.querySelector('.app-header');
+      const offset = (header ? header.getBoundingClientRect().height : 0) + 8;
+      return Math.max(0, target.getBoundingClientRect().top + window.pageYOffset - offset);
+    }
+
+    // Wait for the new panel to paint (display swap), then scroll
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        window.scrollTo({ top: targetY(), behavior: behavior });
+        // Instant correction if smooth scroll undershot (layout shift / long previous step)
+        setTimeout(function () {
+          const y = targetY();
+          if (Math.abs(window.pageYOffset - y) > 24) {
+            window.scrollTo({ top: y, behavior: 'auto' });
+          }
+        }, reduceMotion ? 0 : 280);
+      });
+    });
   }
 
   function wizardNext() {
