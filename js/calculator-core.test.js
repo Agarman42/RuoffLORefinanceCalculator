@@ -117,6 +117,46 @@ const canon = C.buildCanonicalNumbers(s, { clientName: 'Test' });
 assert(canon.currentPi === s.oldPi, 'canonical matches scenario');
 assert(canon.cashAtClosingLabel === 'cash_back' || canon.cashAtClosingLabel === 'cash_to_close', 'cash label');
 
+console.log('\nSize loan to cover + closing floor');
+const sizeDebts = [
+  { name: 'Current Mortgage', bal: 320000, pay: 1900, payOff: true },
+  { name: 'Card', bal: 10000, pay: 300, rate: 22.9, months: 48, payOff: true }
+];
+const sized = C.sizeLoanToCover(320000, sizeDebts, 5000, 450000);
+assert(sized.closingCostsUsed === 5000, 'uses entered closing costs');
+assert(sized.needed === 335000, '320k + 10k + 5k costs');
+assert(sized.target === 335000, 'under LTV cap → target = needed');
+assert(sized.usedClosingFloor === false, 'not using floor when costs entered');
+const sizedFloor = C.sizeLoanToCover(320000, sizeDebts, 0, 450000);
+assert(sizedFloor.usedClosingFloor === true, 'blank costs → floor flag');
+assert(sizedFloor.closingCostsUsed === 5000, 'floor is $5,000');
+assert(sizedFloor.needed === 335000, 'floor still 320k+10k+5k');
+
+console.log('\nDebt rate/term in interest avoided + canonical');
+const withRates = C.computeScenario({
+  homeValue: 450000,
+  currentBalance: 320000,
+  currentRate: 6.75,
+  yearsRemaining: 27,
+  totalPayment: 2400,
+  taxes: 350,
+  insurance: 150,
+  pmi: 0,
+  escrowIncluded: true,
+  newLoanAmount: 335000,
+  newRate: 5.875,
+  newTerm: 30,
+  closingCosts: 5000,
+  debts: sizeDebts
+});
+assert(withRates.consumerDebtInterestAvoided > 0, 'interest avoided uses card rate/term');
+const canonRates = C.buildCanonicalNumbers(withRates, { clientName: 'Test' });
+const card = (canonRates.debts || []).find(function (d) { return d.name === 'Card'; });
+assert(card && card.interestRate === 22.9, 'canonical debt rate passed');
+assert(card && card.remainingMonths === 48, 'canonical debt term passed');
+assert(card && card.interestAvoidedIfPaidOff > 0, 'per-debt interest avoided');
+assert(canonRates.debtInsights && canonRates.debtInsights.highAprDebtsToHighlight.length >= 1, 'high APR insights');
+
 console.log('\n────────────────────');
 console.log(passed + ' passed,', failed + ' failed');
 process.exit(failed ? 1 : 0);

@@ -1167,6 +1167,24 @@ body.mode-guided .wizard-panel section.glass > button {
   border-radius: 9999px;
   font-feature-settings: "tnum";
 }
+.size-loan-disclosure {
+  margin: 0.45rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.size-loan-disclosure-line {
+  display: block;
+  font-weight: 600;
+  color: var(--text);
+  opacity: 0.85;
+}
+.size-loan-disclosure-break {
+  display: block;
+  margin-top: 0.15rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
 .debt-list-toolbar { margin-bottom: 0.5rem; }
 
 /* ── Add-debt modal actions ─────────────────────────────── */

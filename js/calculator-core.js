@@ -24,9 +24,12 @@
     newLoanAmount: 320000,
     newRate: 5.875,
     newTerm: 30,
-    closingCosts: 6000,
+    closingCosts: 5000,
     debts: []
   };
+
+  /** Used when sizing loan to cover debts if closing costs are blank / zero */
+  const SIZE_LOAN_CLOSING_FLOOR = 5000;
 
   function roundMoney(n) {
     return Math.round((Number(n) || 0) * 100) / 100;
@@ -228,6 +231,8 @@
 
   /**
    * Interest avoided by paying off selected non-mortgage debts.
+   * Uses rate + remaining months when available; if rate is set without months,
+   * months are derived from payment schedule.
    */
   function consumerDebtInterestAvoided(debts) {
     return roundDollar((debts || []).reduce(function (sum, d) {
@@ -235,6 +240,45 @@
       if (!(Number(d.rate) > 0) && !(Number(d.months) > 0)) return sum;
       return sum + debtRemainingInterest(d.bal, d.rate, d.pay, d.months);
     }, 0));
+  }
+
+  /**
+   * Per-debt interest avoided estimate (same math as rollup).
+   * Returns 0 when rate/term detail is missing.
+   */
+  function debtInterestAvoidedEst(d) {
+    if (!d || !d.payOff || d.name === 'Current Mortgage') return 0;
+    if (!(Number(d.rate) > 0) && !(Number(d.months) > 0)) return 0;
+    return roundDollar(debtRemainingInterest(d.bal, d.rate, d.pay, d.months));
+  }
+
+  /**
+   * Loan amount to cover mortgage + selected other debts + closing costs.
+   * If closingCosts is blank/zero, applies SIZE_LOAN_CLOSING_FLOOR ($5,000)
+   * so cash-to-close is not understated.
+   */
+  function sizeLoanToCover(currentBalance, debts, closingCosts, homeValue) {
+    const entered = Number(closingCosts) || 0;
+    const usedClosingFloor = !(entered > 0);
+    const costs = usedClosingFloor ? SIZE_LOAN_CLOSING_FLOOR : entered;
+    const mortgage = Number(currentBalance) || 0;
+    const other = otherDebtsPaidOff(debts);
+    const needed = mortgage + other + costs;
+    const maxLoan = maxLoanAmount(homeValue, debts);
+    const maxLtvPct = Math.round(maxLtvRatio(debts) * 100);
+    const target = Math.min(needed, maxLoan);
+    return {
+      mortgagePayoff: roundDollar(mortgage),
+      otherDebts: roundDollar(other),
+      closingCostsUsed: roundDollar(costs),
+      usedClosingFloor: usedClosingFloor,
+      closingFloor: SIZE_LOAN_CLOSING_FLOOR,
+      needed: roundDollar(needed),
+      maxLoan: maxLoan,
+      maxLtvPct: maxLtvPct,
+      target: roundDollar(target),
+      capped: needed > maxLoan
+    };
   }
 
   /**
@@ -464,7 +508,7 @@
     const home = Number(state.homeValue) || 0;
     const bal = Number(state.currentBalance) || 0;
     const debts = state.debts || [];
-    const costs = Number(state.closingCosts) || 6000;
+    const costs = Number(state.closingCosts) || SIZE_LOAN_CLOSING_FLOOR;
     const other = otherDebtsPaidOff(debts);
     const rate = Number(state.newRate) || 5.875;
     const yearsRem = Number(state.yearsRemaining) || 27;
@@ -507,6 +551,42 @@
   function buildCanonicalNumbers(scenario, client) {
     const c = client || {};
     const s = scenario;
+    const debtsDetailed = (s.debts || []).map(function (d) {
+      const rate = Number(d.rate) || 0;
+      const months = Number(d.months) || 0;
+      const hasRateTerm = rate > 0 || months > 0;
+      const interestAvoided = debtInterestAvoidedEst(d);
+      return {
+        name: d.name,
+        balance: d.bal || 0,
+        monthlyPayment: d.pay || 0,
+        interestRate: rate,
+        remainingMonths: months,
+        payOff: !!d.payOff,
+        isMortgage: d.name === 'Current Mortgage',
+        hasRateOrTermDetail: hasRateTerm,
+        interestAvoidedIfPaidOff: interestAvoided,
+        priorityHint: (!d.payOff || d.name === 'Current Mortgage')
+          ? 'n/a'
+          : (rate >= 15
+            ? 'high_apr_priority'
+            : rate >= 8
+              ? 'moderate_apr'
+              : hasRateTerm
+                ? 'lower_apr_or_short_term'
+                : 'missing_rate_term_detail')
+      };
+    });
+    const payoffConsumer = debtsDetailed.filter(function (d) {
+      return d.payOff && !d.isMortgage;
+    });
+    const highAprPayoffs = payoffConsumer
+      .filter(function (d) { return d.interestRate >= 12; })
+      .sort(function (a, b) { return b.interestRate - a.interestRate; });
+    const missingRateTerm = payoffConsumer.filter(function (d) {
+      return !d.hasRateOrTermDetail;
+    });
+
     return {
       clientName: c.clientName || 'Valued Client',
       clientEmail: c.clientEmail || '',
@@ -543,20 +623,22 @@
       refiMortgageInterest: s.mortgageInterest.refiInterest,
       mortgageInterestSavings: s.mortgageInterest.savings,
       consumerDebtInterestAvoided: s.consumerDebtInterestAvoided,
+      totalInterestPicture: s.totalInterestPicture,
       shorterTermInterestSavings: s.shorterTermInterestSavings,
       halfSavingsPaydown: s.halfSavingsPaydown,
       maxLoanAmount: s.maxLoanAmount,
       isCashOutScenario: s.isCashOutScenario,
-      debts: (s.debts || []).map(function (d) {
-        return {
-          name: d.name,
-          balance: d.bal || 0,
-          monthlyPayment: d.pay || 0,
-          interestRate: d.rate || 0,
-          remainingMonths: d.months || 0,
-          payOff: !!d.payOff
-        };
-      })
+      debts: debtsDetailed,
+      debtInsights: {
+        consumerDebtsMarkedPayoff: payoffConsumer.length,
+        highAprDebtsToHighlight: highAprPayoffs,
+        debtsMissingRateOrTerm: missingRateTerm.map(function (d) { return d.name; }),
+        consumerDebtInterestAvoided: s.consumerDebtInterestAvoided,
+        guidance:
+          'When recommending benefits, prioritize paying off high interestRate consumer debts. ' +
+          'Use interestAvoidedIfPaidOff and remainingMonths when present. ' +
+          'If hasRateOrTermDetail is false, do not invent APR or term — say rate/term was not provided.'
+      }
     };
   }
 
@@ -586,6 +668,9 @@
     shorterTermInterestSavings: shorterTermInterestSavings,
     mortgageInterestComparison: mortgageInterestComparison,
     consumerDebtInterestAvoided: consumerDebtInterestAvoided,
+    debtInterestAvoidedEst: debtInterestAvoidedEst,
+    sizeLoanToCover: sizeLoanToCover,
+    SIZE_LOAN_CLOSING_FLOOR: SIZE_LOAN_CLOSING_FLOOR,
     computeScenario: computeScenario,
     simulatePaydown: simulatePaydown,
     amortizationBalanceSeries: amortizationBalanceSeries,

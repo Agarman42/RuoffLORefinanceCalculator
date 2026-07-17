@@ -1314,37 +1314,64 @@
     });
   }
 
-  /** Loan amount needed to pay off mortgage + selected other debts + closing costs (capped by LTV). */
+  /**
+   * Loan amount to cover mortgage + selected debts + closing costs (capped by LTV).
+   * Closing costs come from the Scenario field; if blank/zero, engine uses a $5,000 floor
+   * so sizing does not understate cash needed.
+   */
   function computeSizeLoanTarget() {
     readStateFromDom();
     ensureMortgageDebt();
-    const needed = (Number(state.currentBalance) || 0)
-      + C.otherDebtsPaidOff(state.debts)
-      + (Number(state.closingCosts) || 0);
-    const maxLoan = C.maxLoanAmount(state.homeValue, state.debts);
-    const maxLtvPct = Math.round(C.maxLtvRatio(state.debts) * 100);
-    const target = Math.min(needed, maxLoan);
-    return {
-      needed: C.roundDollar(needed),
-      maxLoan: maxLoan,
-      maxLtvPct: maxLtvPct,
-      target: C.roundDollar(target),
-      capped: needed > maxLoan
-    };
+    return C.sizeLoanToCover(
+      state.currentBalance,
+      state.debts,
+      state.closingCosts,
+      state.homeValue
+    );
+  }
+
+  function sizeLoanDisclosureHtml(r) {
+    const floorNote = r.usedClosingFloor
+      ? ' (default $' + (r.closingFloor || 5000).toLocaleString() + ' — none entered)'
+      : '';
+    return (
+      '<p class="size-loan-disclosure">' +
+        '<span class="size-loan-disclosure-line">' +
+          'Includes <strong class="number">' + money(r.closingCostsUsed) + '</strong> est. closing costs' +
+          floorNote +
+        '</span>' +
+        '<span class="size-loan-disclosure-break">' +
+          money(r.mortgagePayoff) + ' mortgage + ' +
+          money(r.otherDebts) + ' debts + ' +
+          money(r.closingCostsUsed) + ' costs' +
+          (r.capped ? ' → capped at ' + r.maxLtvPct + '% LTV' : '') +
+        '</span>' +
+      '</p>'
+    );
   }
 
   function sizeLoanToCoverDebts() {
     const r = computeSizeLoanTarget();
-    if (selectedOtherDebtsCount() === 0 && r.needed <= (state.currentBalance + (state.closingCosts || 0) + 1)) {
-      // Still useful for rate-and-term roll-in of costs
+    // Persist the closing-cost assumption so cash-at-closing math matches the sized loan
+    if (r.usedClosingFloor) {
+      state.closingCosts = r.closingCostsUsed;
+      if ($('closing-costs')) $('closing-costs').value = r.closingCostsUsed;
     }
     state.newLoanAmount = r.target;
     if ($('new-loan-amt')) $('new-loan-amt').value = r.target;
     liveUpdate();
     if (r.capped) {
-      toast('Loan sized to max ' + r.maxLoan.toLocaleString() + ' LTV cap (needed ' + r.needed.toLocaleString() + ')', 'warn');
+      toast(
+        'Loan sized to ' + money(r.target) + ' (max ' + r.maxLtvPct + '% LTV). ' +
+        'Needed ' + money(r.needed) + ' including ' + money(r.closingCostsUsed) + ' est. closing costs.',
+        'warn'
+      );
     } else {
-      toast('New loan set to ' + money(r.target) + ' (mortgage + selected debts + closing costs)');
+      toast(
+        'New loan set to ' + money(r.target) +
+        ' — mortgage + selected debts + ' + money(r.closingCostsUsed) + ' est. closing costs' +
+        (r.usedClosingFloor ? ' (default applied)' : '')
+      );
     }
     // Keep user in context: close debts modal so they see scenario update
     if ($('debts-modal') && !$('debts-modal').classList.contains('hidden')) {
@@ -1391,9 +1418,10 @@
         '<i class="fas fa-magic"></i> Size new loan to cover selected debts' +
         '<span class="size-loan-amt">' + money(sizeInfo.target) + '</span>' +
       '</button>' +
+      sizeLoanDisclosureHtml(sizeInfo) +
       (sizeInfo.capped
-        ? '<p class="text-xs warn mt-1">Capped at ' + sizeInfo.maxLtvPct + '% LTV max (' + money(sizeInfo.maxLoan) + '). Needed ' + money(sizeInfo.needed) + '.</p>'
-        : '<p class="text-xs opacity-60 mt-1">Sets loan = mortgage + selected debts + closing costs</p>');
+        ? '<p class="text-xs warn mt-1">Capped at ' + sizeInfo.maxLtvPct + '% LTV max (' + money(sizeInfo.maxLoan) + '). Full need ' + money(sizeInfo.needed) + '.</p>'
+        : '');
     container.appendChild(toolbar);
     toolbar.querySelector('[data-size-loan]').addEventListener('click', sizeLoanToCoverDebts);
 
@@ -2086,7 +2114,14 @@
       'CRITICAL: A JSON object of CANONICAL NUMBERS is provided. Use ONLY those numbers for every figure. ' +
       'Do not recalculate payments, interest, LTV, cash back, or break-even. ' +
       'If a value is null, say it is not applicable. ' +
-      'Never use emojis. Return ONLY valid JSON. Use semantic HTML in string values: h2,h3,p,ul,li,table,strong,em.';
+      'Never use emojis. Return ONLY valid JSON. Use semantic HTML in string values: h2,h3,p,ul,li,table,strong,em.\n' +
+      'DEBT RATE & TERM RULES:\n' +
+      '- Each debt may include interestRate, remainingMonths, interestAvoidedIfPaidOff, and priorityHint.\n' +
+      '- When interestRate or remainingMonths is present (>0), cite them in benefits and recommendations.\n' +
+      '- Prioritize high_apr_priority debts (cards/personal loans) when explaining why consolidation helps.\n' +
+      '- Use consumerDebtInterestAvoided and debtInsights.highAprDebtsToHighlight as source-of-truth wins.\n' +
+      '- If hasRateOrTermDetail is false, do NOT invent an APR or term — note that rate/term was not provided.\n' +
+      '- Monthly cash-flow relief still uses monthlyPayment even when rate/term is missing.';
 
     let outputSchema;
     let sectionInstructions;
@@ -2094,24 +2129,26 @@
     if (isLo) {
       outputSchema = '{ "executiveSummary": "...", "scenarioComparison": "...", "recommendedPlan": "...", "salesScripts": "...", "followUpSequence": "..." }';
       sectionInstructions =
-        'executiveSummary: Client-facing. Warm headline, biggest wins using canonical numbers, before/after table, break-even, half-savings principal tip if present, LO contact.\n' +
-        'scenarioComparison: HTML table Current vs Proposed using only canonical numbers; 2-3 short takeaways.\n' +
-        'recommendedPlan: Step plan with exact loan amount/rate/term from numbers; risks; timeline.\n' +
-        'salesScripts: 5 natural phone/email scripts using the real monthly cash-flow and cash-at-closing figures.\n' +
+        'executiveSummary: Client-facing. Warm headline, biggest wins using canonical numbers (cash flow, debts paid, consumerDebtInterestAvoided when >0, high-APR debts by name/rate), before/after table, break-even, half-savings tip if present, LO contact.\n' +
+        'scenarioComparison: HTML table Current vs Proposed using only canonical numbers; 2-3 short takeaways including debt payoff + interest avoided when available.\n' +
+        'recommendedPlan: Step plan with exact loan amount/rate/term; list each consumer debt marked payOff with balance, rate, remaining months when present; call out missing rate/term debts; risks; timeline.\n' +
+        'salesScripts: 5 natural phone/email scripts using real cash-flow, cash-at-closing, and at least one high-APR debt detail when debtInsights.highAprDebtsToHighlight is non-empty.\n' +
         'followUpSequence: 30-day Day 1/3/7/14/30 touchpoints with full copy.\n' +
         'LO Profile: ' + (branding.name || 'Loan Officer') + ', NMLS ' + (branding.nmls || '—') +
         ', ' + (branding.cell || '') + ', ' + (branding.email || '');
     } else {
       outputSchema = '{ "summary": "...", "scenarioComparison": "...", "recommendedPlan": "..." }';
       sectionInstructions =
-        'summary: Warm, trustworthy borrower summary. Great News headline. Use canonical numbers only. Before/after. Soft CTA to contact LO.\n' +
+        'summary: Warm, trustworthy borrower summary. Great News headline. Use canonical numbers only. Mention monthly cash-flow change and, when >0, consumerDebtInterestAvoided. Soft CTA to contact LO.\n' +
         'scenarioComparison: Clean HTML comparison table. Break-even and interest figures from canonical numbers.\n' +
         'recommendedPlan: Clear recommendation; respect years remaining (' + numbers.yearsRemaining +
-        ') — do not extend term beyond it without explaining trade-off; list debts to pay off.';
+        ') — do not extend term beyond it without explaining trade-off; list debts to pay off with rate and months left when provided in debts[].';
     }
 
     const prompt =
       systemRules + '\n\nOUTPUT JSON SHAPE:\n' + outputSchema + '\n\nSECTION RULES:\n' + sectionInstructions +
+      '\n\nDEBT INSIGHTS (precomputed — do not recalculate):\n' +
+      JSON.stringify(numbers.debtInsights || {}, null, 2) +
       '\n\nCANONICAL NUMBERS (source of truth):\n' + JSON.stringify(numbers, null, 2);
 
     try {
@@ -2186,6 +2223,19 @@
 
   function buildFallbackPlan(n, isLo) {
     const cashLabel = n.cashAtClosingLabel === 'cash_back' ? 'Estimated cash back' : 'Estimated cash to close';
+    const consumerDebts = (n.debts || []).filter(function (d) {
+      return d.payOff && d.name !== 'Current Mortgage' && !d.isMortgage;
+    });
+    const debtListHtml = consumerDebts.length
+      ? '<ul>' + consumerDebts.map(function (d) {
+          const bits = [money(d.balance) + ' balance', money(d.monthlyPayment) + '/mo'];
+          if (d.interestRate > 0) bits.push(d.interestRate + '% APR');
+          if (d.remainingMonths > 0) bits.push(d.remainingMonths + ' mo left');
+          if (d.interestAvoidedIfPaidOff > 0) bits.push('~' + money(d.interestAvoidedIfPaidOff) + ' interest avoided');
+          return '<li><strong>' + escapeHtml(d.name) + '</strong> — ' + bits.join(' · ') + '</li>';
+        }).join('') + '</ul>'
+      : '<p class="opacity-70">No other consumer debts marked for payoff.</p>';
+
     const summary =
       '<h2>Great News, ' + escapeHtml((n.clientName || 'there').split(' ')[0]) + '!</h2>' +
       '<p>Based on the numbers in your calculator (not a loan offer), here is a clear snapshot.</p>' +
@@ -2193,6 +2243,9 @@
       '<p><strong>Monthly cash-flow change:</strong> ' + money(n.monthlyCashFlowChange) + '</p>' +
       '<p><strong>New total housing (est.):</strong> ' + money(n.newTotalHousing) + ' (P&I ' + money(n.newPi) + ')</p>' +
       '<p><strong>Debts paid off:</strong> ' + money(n.totalDebtsPaidOff) + '</p>' +
+      (n.consumerDebtInterestAvoided > 0
+        ? '<p><strong>Est. consumer debt interest avoided:</strong> ' + money(n.consumerDebtInterestAvoided) + ' (from rates/terms entered)</p>'
+        : '') +
       '<p><strong>' + cashLabel + ':</strong> ' + money(Math.abs(n.cashAtClosing)) + ' after ' + money(n.closingCosts) + ' closing costs</p>' +
       '<p><strong>Break-even:</strong> ' + (n.breakEvenMonths != null ? n.breakEvenMonths + ' months' : 'N/A') + '</p>' +
       '<p><strong>Mortgage interest vs keep current:</strong> ' + money(n.mortgageInterestSavings) + '</p>' +
@@ -2209,16 +2262,21 @@
       '<tr><td>Total housing (est.)</td><td>' + money(n.currentTotalHousing) + '</td><td>' + money(n.newTotalHousing) + '</td></tr>' +
       '<tr><td>LTV</td><td>' + n.currentLtv + '%</td><td>' + n.newLtv + '%</td></tr>' +
       '<tr><td>Equity</td><td>' + money(n.currentEquity) + '</td><td>' + money(n.newEquity) + '</td></tr>' +
-      '</tbody></table>';
+      '</tbody></table>' +
+      '<h3 class="mt-4">Debts marked for payoff</h3>' + debtListHtml;
 
     const plan =
       '<h2>Recommended discussion points</h2>' +
       '<ul>' +
       '<li>Proposed loan: ' + money(n.newLoanAmount) + ' at ' + n.newRate + '% for ' + n.newTerm + ' years</li>' +
       '<li>Monthly cash-flow change: ' + money(n.monthlyCashFlowChange) + '</li>' +
-      '<li>' + cashLabel + ': ' + money(Math.abs(n.cashAtClosing)) + '</li>' +
-      '<li>Review debts marked for payoff with your loan officer</li>' +
+      '<li>' + cashLabel + ': ' + money(Math.abs(n.cashAtClosing)) + ' (includes ' + money(n.closingCosts) + ' est. closing costs)</li>' +
+      (n.consumerDebtInterestAvoided > 0
+        ? '<li>Consumer debt interest avoided (est.): ' + money(n.consumerDebtInterestAvoided) + '</li>'
+        : '<li>Add optional rate &amp; months on high-APR debts for stronger interest-avoided estimates</li>') +
+      '<li>Review each debt marked for payoff with your loan officer</li>' +
       '</ul>' +
+      debtListHtml +
       '<p>Next step: talk with your Ruoff loan officer to verify pricing, closing costs, and eligibility.</p>';
 
     if (!isLo) return [summary, table, plan];
