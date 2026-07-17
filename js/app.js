@@ -898,7 +898,7 @@
         : scenario.monthlyCashFlowChange < 0
           ? 'Cash flow is higher than today — try rate, term, or which debts you include.'
           : 'Tune rate, term, or loan amount to explore trade-offs.',
-      5: 'Your calculator numbers are the source of truth. AI only writes the story.'
+      5: 'Numbers stay locked. AI will narrate this path and compare calculated debt-payoff alternatives.'
     };
     tip.textContent = tips[wizardStep] || '';
   }
@@ -2161,7 +2161,28 @@
 
     const client = collectClient();
     saveClient();
+    readStateFromDom();
+    ensureMortgageDebt();
     const numbers = C.buildCanonicalNumbers(lastScenario, client);
+    // Precomputed alternate paths (same engine) so AI can recommend debt payoff vs rate-and-term safely
+    const altPack = C.buildScenarioAlternatives({
+      homeValue: state.homeValue,
+      currentBalance: state.currentBalance,
+      currentRate: state.currentRate,
+      yearsRemaining: state.yearsRemaining,
+      totalPayment: state.totalPayment,
+      taxes: state.taxes,
+      insurance: state.insurance,
+      pmi: state.pmi,
+      escrowIncluded: state.escrowIncluded,
+      newLoanAmount: state.newLoanAmount,
+      newRate: state.newRate,
+      newTerm: state.newTerm,
+      closingCosts: state.closingCosts,
+      debts: state.debts
+    });
+    numbers.scenarioAlternatives = altPack.alternatives;
+    numbers.comparisonHints = altPack.comparisonHints;
     window.clientCalcData = numbers;
     window.__canonicalNumbers = numbers;
 
@@ -2170,17 +2191,23 @@
 
     const systemRules =
       'You are the Refinance Strategist for Ruoff Mortgage. ' +
-      'CRITICAL: A JSON object of CANONICAL NUMBERS is provided. Use ONLY those numbers for every figure. ' +
+      'CRITICAL: CANONICAL NUMBERS and SCENARIO ALTERNATIVES are provided. Use ONLY those figures. ' +
       'Do not recalculate payments, interest, LTV, cash back, or break-even. ' +
       'If a value is null, say it is not applicable. ' +
       'Never use emojis. Return ONLY valid JSON. Use semantic HTML in string values: h2,h3,p,ul,li,table,strong,em.\n' +
+      'PRIMARY vs ALTERNATIVE:\n' +
+      '- The PRIMARY path is the current calculator selection (id "primary" in scenarioAlternatives). ' +
+      'Narrate it as the plan the LO/client just modeled — all top-level canonical numbers match primary.\n' +
+      '- SCENARIO ALTERNATIVES are other paths the engine already calculated (rate-and-term only, high-APR debts only, all debts, etc.).\n' +
+      '- You MUST include an "Alternative recommendation" subsection in recommendedPlan that compares at least one non-primary alternative when it is present.\n' +
+      '- If an alternative has better monthlyCashFlowChange and/or consumerDebtInterestAvoided (especially high-APR payoff), say so clearly and recommend discussing that path — still using only the alternative object figures.\n' +
+      '- If primary is already the stronger path, say why (cite the metrics) and still briefly note what rate-and-term-only would look like.\n' +
+      '- Never invent a loan amount, payment, or interest figure that is not in primary or an alternative object.\n' +
       'DEBT RATE & TERM RULES:\n' +
       '- Each debt may include interestRate, remainingMonths, interestAvoidedIfPaidOff, and priorityHint.\n' +
       '- When interestRate or remainingMonths is present (>0), cite them in benefits and recommendations.\n' +
-      '- Prioritize high_apr_priority debts (cards/personal loans) when explaining why consolidation helps.\n' +
-      '- Use consumerDebtInterestAvoided and debtInsights.highAprDebtsToHighlight as source-of-truth wins.\n' +
-      '- If hasRateOrTermDetail is false, do NOT invent an APR or term — note that rate/term was not provided.\n' +
-      '- Monthly cash-flow relief still uses monthlyPayment even when rate/term is missing.';
+      '- Prioritize high_apr_priority debts when explaining why consolidation may make more sense than rate-and-term alone.\n' +
+      '- If hasRateOrTermDetail is false, do NOT invent an APR or term — note that rate/term was not provided.';
 
     let outputSchema;
     let sectionInstructions;
@@ -2188,27 +2215,32 @@
     if (isLo) {
       outputSchema = '{ "executiveSummary": "...", "scenarioComparison": "...", "recommendedPlan": "...", "salesScripts": "...", "followUpSequence": "..." }';
       sectionInstructions =
-        'executiveSummary: Client-facing. Warm headline, biggest wins using canonical numbers (cash flow, debts paid, consumerDebtInterestAvoided when >0, high-APR debts by name/rate), before/after table, break-even, half-savings tip if present, LO contact.\n' +
-        'scenarioComparison: HTML table Current vs Proposed using only canonical numbers; 2-3 short takeaways including debt payoff + interest avoided when available.\n' +
-        'recommendedPlan: Step plan with exact loan amount/rate/term; list each consumer debt marked payOff with balance, rate, remaining months when present; call out missing rate/term debts; risks; timeline.\n' +
-        'salesScripts: 5 natural phone/email scripts using real cash-flow, cash-at-closing, and at least one high-APR debt detail when debtInsights.highAprDebtsToHighlight is non-empty.\n' +
+        'executiveSummary: Client-facing. Warm headline, biggest wins for the PRIMARY path (cash flow, debts paid, consumerDebtInterestAvoided when >0). Brief one-sentence teaser if an alternative is stronger for debt payoff. Before/after for primary, break-even, LO contact.\n' +
+        'scenarioComparison: HTML table Current vs PRIMARY proposed; optional second mini-table or rows comparing primary vs best alternative cash-flow and debts paid (from scenarioAlternatives only).\n' +
+        'recommendedPlan: (1) Primary plan with exact loan amount/rate/term and debts marked payOff. (2) Required h3 "Alternative recommendation" — compare rate-and-term-only and/or high-APR consolidation using scenarioAlternatives metrics; say which may make more sense and why (cash flow, interest avoided, LTV/cash at close trade-offs). (3) Risks and timeline.\n' +
+        'salesScripts: 5 scripts; at least one can open the alternative debt-payoff conversation when alternatives show a win.\n' +
         'followUpSequence: 30-day Day 1/3/7/14/30 touchpoints with full copy.\n' +
         'LO Profile: ' + (branding.name || 'Loan Officer') + ', NMLS ' + (branding.nmls || '—') +
         ', ' + (branding.cell || '') + ', ' + (branding.email || '');
     } else {
       outputSchema = '{ "summary": "...", "scenarioComparison": "...", "recommendedPlan": "..." }';
       sectionInstructions =
-        'summary: Warm, trustworthy borrower summary. Great News headline. Use canonical numbers only. Mention monthly cash-flow change and, when >0, consumerDebtInterestAvoided. Soft CTA to contact LO.\n' +
-        'scenarioComparison: Clean HTML comparison table. Break-even and interest figures from canonical numbers.\n' +
-        'recommendedPlan: Clear recommendation; respect years remaining (' + numbers.yearsRemaining +
-        ') — do not extend term beyond it without explaining trade-off; list debts to pay off with rate and months left when provided in debts[].';
+        'summary: Warm borrower summary for the PRIMARY path. Mention cash-flow change and consumerDebtInterestAvoided when >0. Soft CTA to contact LO.\n' +
+        'scenarioComparison: Clean HTML table Current vs Primary. If useful, one short note comparing to an alternative from scenarioAlternatives.\n' +
+        'recommendedPlan: Clear primary recommendation; respect years remaining (' + numbers.yearsRemaining +
+        '). Required section "Another option to discuss" using scenarioAlternatives (e.g. rate-and-term only vs paying off higher-rate debts). List debts with rate/months when provided. Do not invent numbers.';
     }
 
     const prompt =
       systemRules + '\n\nOUTPUT JSON SHAPE:\n' + outputSchema + '\n\nSECTION RULES:\n' + sectionInstructions +
       '\n\nDEBT INSIGHTS (precomputed — do not recalculate):\n' +
       JSON.stringify(numbers.debtInsights || {}, null, 2) +
-      '\n\nCANONICAL NUMBERS (source of truth):\n' + JSON.stringify(numbers, null, 2);
+      '\n\nSCENARIO ALTERNATIVES (precomputed — use for alternative recommendation):\n' +
+      JSON.stringify({
+        alternatives: numbers.scenarioAlternatives,
+        comparisonHints: numbers.comparisonHints
+      }, null, 2) +
+      '\n\nCANONICAL NUMBERS — PRIMARY PATH (source of truth):\n' + JSON.stringify(numbers, null, 2);
 
     try {
       $('results-area').classList.remove('hidden');
@@ -2324,6 +2356,24 @@
       '</tbody></table>' +
       '<h3 class="mt-4">Debts marked for payoff</h3>' + debtListHtml;
 
+    let altHtml = '';
+    const alts = n.scenarioAlternatives || [];
+    if (alts.length > 1) {
+      altHtml =
+        '<h3>Alternative paths (calculated)</h3>' +
+        '<p class="text-sm opacity-80">Same engine as the primary path — compare before choosing.</p><ul>' +
+        alts.filter(function (a) { return a.id !== 'primary'; }).map(function (a) {
+          return '<li><strong>' + escapeHtml(a.label) + '</strong>: loan ' + money(a.newLoanAmount) +
+            ', cash-flow ' + money(a.monthlyCashFlowChange) +
+            ', consumer interest avoided ' + money(a.consumerDebtInterestAvoided || 0) +
+            (a.debtsPaidOffNames && a.debtsPaidOffNames.length
+              ? ' · pays off ' + escapeHtml(a.debtsPaidOffNames.join(', '))
+              : ' · mortgage only') +
+            '</li>';
+        }).join('') +
+        '</ul>';
+    }
+
     const plan =
       '<h2>Recommended discussion points</h2>' +
       '<ul>' +
@@ -2336,6 +2386,7 @@
       '<li>Review each debt marked for payoff with your loan officer</li>' +
       '</ul>' +
       debtListHtml +
+      altHtml +
       '<p>Next step: talk with your Ruoff loan officer to verify pricing, closing costs, and eligibility.</p>';
 
     if (!isLo) return [summary, table, plan];

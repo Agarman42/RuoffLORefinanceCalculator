@@ -157,6 +157,30 @@ assert(card && card.remainingMonths === 48, 'canonical debt term passed');
 assert(card && card.interestAvoidedIfPaidOff > 0, 'per-debt interest avoided');
 assert(canonRates.debtInsights && canonRates.debtInsights.highAprDebtsToHighlight.length >= 1, 'high APR insights');
 
+console.log('\nScenario alternatives for AI');
+const altPack = C.buildScenarioAlternatives({
+  homeValue: 450000,
+  currentBalance: 320000,
+  currentRate: 6.75,
+  yearsRemaining: 27,
+  totalPayment: 2400,
+  taxes: 350,
+  insurance: 150,
+  pmi: 0,
+  escrowIncluded: true,
+  newLoanAmount: 336000,
+  newRate: 5.875,
+  newTerm: 30,
+  closingCosts: 6000,
+  debts: sizeDebts
+});
+assert(altPack.alternatives && altPack.alternatives.length >= 2, 'at least primary + rate-and-term');
+assert(altPack.alternatives.some(function (a) { return a.id === 'rate_and_term_only'; }), 'rate-and-term alt present');
+assert(altPack.alternatives.some(function (a) { return a.id === 'primary'; }), 'primary alt present');
+const rateTermAlt = altPack.alternatives.find(function (a) { return a.id === 'rate_and_term_only'; });
+assert(rateTermAlt.otherDebtsPaidOff === 0, 'rate-and-term pays no consumer debts');
+assert(typeof altPack.comparisonHints.bestMonthlyCashFlowId === 'string', 'comparison hint present');
+
 console.log('\n────────────────────');
 console.log(passed + ' passed,', failed + ' failed');
 process.exit(failed ? 1 : 0);

@@ -547,6 +547,182 @@
     }
   }
 
+  /**
+   * Compact metrics snapshot for side-by-side AI alternatives (no full debt lists).
+   */
+  function scenarioMetricsSummary(scenario, label, id, description, debtsInPlay) {
+    const s = scenario;
+    return {
+      id: id,
+      label: label,
+      description: description || '',
+      debtsPaidOffNames: debtsInPlay || [],
+      newLoanAmount: s.newLoanAmount,
+      newRate: s.newRate,
+      newTerm: s.newTerm,
+      newPi: s.newPi,
+      newTotalHousing: s.newHousing,
+      newLtv: s.newLtv,
+      monthlyCashFlowChange: s.monthlyCashFlowChange,
+      otherDebtsPaidOff: s.otherDebtsPaidOff,
+      otherDebtMonthly: s.otherDebtMonthly,
+      cashAtClosing: s.cashAtClosing,
+      cashAtClosingLabel: s.isCashBack ? 'cash_back' : 'cash_to_close',
+      breakEvenMonths: s.breakEvenMonths,
+      consumerDebtInterestAvoided: s.consumerDebtInterestAvoided,
+      mortgageInterestSavings: s.mortgageInterest && s.mortgageInterest.savings,
+      totalInterestPicture: s.totalInterestPicture,
+      isCashOutScenario: s.isCashOutScenario,
+      overMaxLoan: s.overMaxLoan
+    };
+  }
+
+  /**
+   * Precomputed refinance paths from the same inputs so AI can recommend
+   * alternatives without inventing math.
+   *
+   * Always includes:
+   *  - primary (current calculator selection)
+   *  - rate_and_term_only (mortgage only, no consumer debt payoff)
+   *  - high_apr_debts_only when any consumer debt has rate >= 12%
+   *  - all_consumer_debts when there are consumer debts not already all selected
+   */
+  function buildScenarioAlternatives(input) {
+    const base = Object.assign({}, DEFAULTS, input || {});
+    const debts = Array.isArray(base.debts)
+      ? base.debts.map(function (d) { return Object.assign({}, d); })
+      : [];
+    const consumer = debts.filter(function (d) { return d.name !== 'Current Mortgage'; });
+    const primary = computeScenario(base);
+    const primaryNames = consumer.filter(function (d) { return d.payOff; }).map(function (d) { return d.name; });
+
+    const alts = [];
+    alts.push(scenarioMetricsSummary(
+      primary,
+      'Primary (current calculator selection)',
+      'primary',
+      'The path currently set in the tool — use these numbers as the main story.',
+      primaryNames
+    ));
+
+    // Rate-and-term only: no consumer payoff; loan = mortgage + closing costs (capped)
+    const noConsumerDebts = debts.map(function (d) {
+      if (d.name === 'Current Mortgage') return Object.assign({}, d, { payOff: true });
+      return Object.assign({}, d, { payOff: false });
+    });
+    const rateTermSize = sizeLoanToCover(
+      base.currentBalance,
+      noConsumerDebts,
+      base.closingCosts,
+      base.homeValue
+    );
+    const rateTermScenario = computeScenario(Object.assign({}, base, {
+      debts: noConsumerDebts,
+      newLoanAmount: rateTermSize.target
+    }));
+    alts.push(scenarioMetricsSummary(
+      rateTermScenario,
+      'Rate-and-term only (keep other debts)',
+      'rate_and_term_only',
+      'Refinance the mortgage only; do not roll in consumer debts. Other monthly debt payments continue.',
+      []
+    ));
+
+    // High-APR only (rate >= 12%)
+    const highAprPresent = consumer.some(function (d) { return (Number(d.rate) || 0) >= 12; });
+    if (highAprPresent) {
+      const highAprDebts = debts.map(function (d) {
+        if (d.name === 'Current Mortgage') return Object.assign({}, d, { payOff: true });
+        const rate = Number(d.rate) || 0;
+        return Object.assign({}, d, { payOff: rate >= 12 });
+      });
+      const highNames = highAprDebts
+        .filter(function (d) { return d.payOff && d.name !== 'Current Mortgage'; })
+        .map(function (d) { return d.name; });
+      // Only add if selection differs from primary
+      const sameAsPrimary = highNames.length === primaryNames.length &&
+        highNames.every(function (n) { return primaryNames.indexOf(n) >= 0; });
+      if (!sameAsPrimary && highNames.length > 0) {
+        const highSize = sizeLoanToCover(
+          base.currentBalance,
+          highAprDebts,
+          base.closingCosts,
+          base.homeValue
+        );
+        const highScenario = computeScenario(Object.assign({}, base, {
+          debts: highAprDebts,
+          newLoanAmount: highSize.target
+        }));
+        alts.push(scenarioMetricsSummary(
+          highScenario,
+          'Pay off high-APR debts only (12%+)',
+          'high_apr_debts_only',
+          'Roll in only consumer debts at 12% APR or higher; leave lower-rate debts alone.',
+          highNames
+        ));
+      }
+    }
+
+    // All consumer debts
+    if (consumer.length > 0) {
+      const allDebts = debts.map(function (d) {
+        return Object.assign({}, d, { payOff: true });
+      });
+      const allNames = consumer.map(function (d) { return d.name; });
+      const sameAll = allNames.length === primaryNames.length &&
+        allNames.every(function (n) { return primaryNames.indexOf(n) >= 0; });
+      if (!sameAll) {
+        const allSize = sizeLoanToCover(
+          base.currentBalance,
+          allDebts,
+          base.closingCosts,
+          base.homeValue
+        );
+        const allScenario = computeScenario(Object.assign({}, base, {
+          debts: allDebts,
+          newLoanAmount: allSize.target
+        }));
+        alts.push(scenarioMetricsSummary(
+          allScenario,
+          'Consolidate all listed consumer debts',
+          'all_consumer_debts',
+          'Roll every non-mortgage debt into the new loan (subject to LTV cap).',
+          allNames
+        ));
+      }
+    }
+
+    // Simple engine hint: which alternative has the best monthly cash flow among alts
+    let bestCashFlowId = alts[0].id;
+    let bestCashFlow = alts[0].monthlyCashFlowChange;
+    alts.forEach(function (a) {
+      if (a.monthlyCashFlowChange > bestCashFlow) {
+        bestCashFlow = a.monthlyCashFlowChange;
+        bestCashFlowId = a.id;
+      }
+    });
+    let bestInterestAvoidedId = alts[0].id;
+    let bestInt = alts[0].consumerDebtInterestAvoided || 0;
+    alts.forEach(function (a) {
+      if ((a.consumerDebtInterestAvoided || 0) > bestInt) {
+        bestInt = a.consumerDebtInterestAvoided || 0;
+        bestInterestAvoidedId = a.id;
+      }
+    });
+
+    return {
+      alternatives: alts,
+      comparisonHints: {
+        bestMonthlyCashFlowId: bestCashFlowId,
+        bestConsumerInterestAvoidedId: bestInterestAvoidedId,
+        note:
+          'All alternative figures were calculated by the same engine as the primary path. ' +
+          'Narrate the primary path first, then recommend an alternative when its metrics are stronger ' +
+          '(e.g. high-APR payoff improves cash flow or interest avoided). Never invent loan amounts or payments.'
+      }
+    };
+  }
+
   /** Canonical numbers blob for AI — model must not recalculate */
   function buildCanonicalNumbers(scenario, client) {
     const c = client || {};
@@ -676,6 +852,7 @@
     amortizationBalanceSeries: amortizationBalanceSeries,
     formatMoney: formatMoney,
     applyPreset: applyPreset,
-    buildCanonicalNumbers: buildCanonicalNumbers
+    buildCanonicalNumbers: buildCanonicalNumbers,
+    buildScenarioAlternatives: buildScenarioAlternatives
   };
 });
