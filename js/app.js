@@ -21,33 +21,92 @@
   const SCENARIOS_KEY = 'ruoff.scenarios.' + MODE;
 
   /**
-   * Grok proxy — API key stays on Render (same pattern as LO / Realtor coaching tools).
+   * Grok proxy — API key stays on the server (Render in production).
    * Browser never sends a key; only POSTs model + messages to the proxy.
    *
    * Override options (no code change needed):
-   *   window.RUOFF_GROK_URL = 'http://localhost:3000/grok'  // local server.js
+   *   window.RUOFF_GROK_URL = 'http://localhost:3003/grok'  // force local proxy
    *   ?grokProxy=https://other.onrender.com/grok           // one-off URL override
+   *   ?localGrok=1                                         // force same-origin /grok
+   *
+   * On localhost: uses local /grok only if /health reports hasKey; otherwise
+   * routes to the Render proxy so Generate Plan works without a local env key.
    */
   const RENDER_GROK_PROXY = 'https://ruofflorefinancecalculator.onrender.com/grok';
+  let resolvedGrokEndpoint = null;
+  let resolvingGrokEndpoint = null;
 
-  function getGrokEndpoint() {
+  function getGrokEndpointSync() {
     if (window.RUOFF_GROK_URL) return window.RUOFF_GROK_URL;
     try {
-      const q = new URLSearchParams(window.location.search).get('grokProxy');
+      const params = new URLSearchParams(window.location.search);
+      const q = params.get('grokProxy');
       if (q) return q;
+      if (params.get('localGrok') === '1') return '/grok';
     } catch (e) { /* ignore */ }
 
     const host = (window.location && window.location.hostname) || '';
-    // Same-origin when this app IS the Render service (or local proxy server)
-    if (host === 'localhost' || host === '127.0.0.1' || host.includes('ruofflorefinancecalculator.onrender.com')) {
-      return '/grok';
-    }
-    // Static hosting / HubSpot / other domain → always hit Render proxy
+    if (host.includes('ruofflorefinancecalculator.onrender.com')) return '/grok';
+    // Prefer cached resolution; default to Render until /health is checked
+    if (resolvedGrokEndpoint) return resolvedGrokEndpoint;
+    if (host === 'localhost' || host === '127.0.0.1') return RENDER_GROK_PROXY;
     return RENDER_GROK_PROXY;
+  }
+
+  async function resolveGrokEndpoint() {
+    if (window.RUOFF_GROK_URL) {
+      resolvedGrokEndpoint = window.RUOFF_GROK_URL;
+      return resolvedGrokEndpoint;
+    }
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const q = params.get('grokProxy');
+      if (q) {
+        resolvedGrokEndpoint = q;
+        return resolvedGrokEndpoint;
+      }
+      if (params.get('localGrok') === '1') {
+        resolvedGrokEndpoint = '/grok';
+        return resolvedGrokEndpoint;
+      }
+    } catch (e) { /* ignore */ }
+
+    const host = (window.location && window.location.hostname) || '';
+    if (host.includes('ruofflorefinancecalculator.onrender.com')) {
+      resolvedGrokEndpoint = '/grok';
+      return resolvedGrokEndpoint;
+    }
+
+    // Localhost: only use same-origin if this process has GROK_API_KEY
+    if (host === 'localhost' || host === '127.0.0.1') {
+      try {
+        const health = await fetch('/health', { cache: 'no-store' }).then(function (r) {
+          return r.ok ? r.json() : null;
+        });
+        if (health && health.hasKey) {
+          resolvedGrokEndpoint = '/grok';
+          return resolvedGrokEndpoint;
+        }
+      } catch (e) { /* fall through to Render */ }
+      resolvedGrokEndpoint = RENDER_GROK_PROXY;
+      return resolvedGrokEndpoint;
+    }
+
+    resolvedGrokEndpoint = RENDER_GROK_PROXY;
+    return resolvedGrokEndpoint;
+  }
+
+  function getGrokEndpoint() {
+    return resolvedGrokEndpoint || getGrokEndpointSync();
   }
 
   /** POST to Render (or local) Grok proxy — never attach Authorization from the browser */
   async function callGrokAPI(body) {
+    if (!resolvedGrokEndpoint) {
+      if (!resolvingGrokEndpoint) resolvingGrokEndpoint = resolveGrokEndpoint();
+      await resolvingGrokEndpoint;
+      resolvingGrokEndpoint = null;
+    }
     const endpoint = getGrokEndpoint();
     const res = await fetch(endpoint, {
       method: 'POST',
@@ -61,7 +120,7 @@
         detail = (errJson && (errJson.error || errJson.message)) || '';
         if (typeof detail === 'object') detail = detail.message || JSON.stringify(detail);
       } catch (e) {
-        detail = await res.text().catch(() => '');
+        detail = await res.text().catch(function () { return ''; });
       }
       throw new Error('Grok proxy ' + res.status + (detail ? ': ' + String(detail).slice(0, 200) : ''));
     }
@@ -2664,10 +2723,10 @@
     hydrateDomFromState();
     liveUpdate();
 
-    // Confirm which Grok proxy the browser will use (no key is ever sent)
-    try {
-      console.info('[Ruoff] Grok proxy:', getGrokEndpoint(), '(API key stays on server)');
-    } catch (e) { /* ignore */ }
+    // Resolve Grok proxy (local /grok only if hasKey; else Render — key never in browser)
+    resolveGrokEndpoint().then(function (ep) {
+      console.info('[Ruoff] Grok proxy:', ep, '(API key stays on server)');
+    }).catch(function () { /* ignore */ });
 
     // Accordion maxHeight fix on resize
     window.addEventListener('resize', () => {
