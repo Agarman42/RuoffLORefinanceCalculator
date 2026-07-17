@@ -2516,31 +2516,77 @@
   }
 
   function showTab(n) {
-    document.querySelectorAll('.tab-btn').forEach((btn, i) => btn.classList.toggle('active', i === n));
+    const tabs = document.querySelectorAll('#results-area .tab-btn, .results-tabs .tab-btn');
+    tabs.forEach(function (btn, i) {
+      const idx = btn.hasAttribute('data-tab')
+        ? parseInt(btn.getAttribute('data-tab'), 10)
+        : i;
+      const on = idx === n;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
     const contentArea = $('tab-content');
+    if (!contentArea) return;
     if (!window.currentPlan) {
       contentArea.innerHTML = '<div class="text-center py-16 text-lg opacity-60">Generate a plan first</div>';
       return;
     }
     contentArea.innerHTML = window.currentPlan.tabs[n] || '<p>Content not loaded.</p>';
+    // Keep the active tab fully in view if the row ever scrolls
+    const activeBtn = document.querySelector('#results-area .tab-btn.active');
+    if (activeBtn && activeBtn.scrollIntoView) {
+      try {
+        activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+      } catch (e) { /* ignore */ }
+    }
   }
 
   function downloadAsWordDoc() {
-    const element = $('tab-content');
-    if (!element || !element.innerHTML.trim() || !window.currentPlan) {
-      toast('Generate a plan first');
+    if (!window.currentPlan || !window.currentPlan.tabs || !window.currentPlan.tabs.length) {
+      toast('Generate a plan first', 'warn');
       return;
     }
-    const name = ($('client-name') && $('client-name').value) || 'Client';
-    const content = element.innerHTML;
-    const blob = new Blob(
-      ['<html><head><meta charset="UTF-8"><title>Ruoff Smart Plan</title></head><body>' + content + '</body></html>'],
-      { type: 'application/msword' }
-    );
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'Ruoff_Smart_Plan_' + name.replace(/\s+/g, '_') + '.doc';
-    link.click();
+    const name = (($('client-name') && $('client-name').value) || 'Client').trim() || 'Client';
+    const tabTitles = MODE === 'lo'
+      ? ['Executive Summary', 'Scenario Comparison', 'Recommended Plan', 'Sales Scripts', 'Follow-Up']
+      : ['Summary', 'Comparison', 'Recommended Plan'];
+    // Full plan (all tabs) so Word isn't empty when viewing a thin tab
+    let body = '<h1>Ruoff Smart Plan — ' + escapeHtml(name) + '</h1>' +
+      '<p><em>Estimates only. Not a commitment to lend. Generated ' +
+      new Date().toLocaleDateString() + '.</em></p>';
+    window.currentPlan.tabs.forEach(function (html, i) {
+      if (!html) return;
+      body += '<h2>' + escapeHtml(tabTitles[i] || ('Section ' + (i + 1))) + '</h2>' + html + '<hr>';
+    });
+    const docHtml =
+      '<html xmlns:o="urn:schemas-microsoft-com:office:office" ' +
+      'xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">' +
+      '<head><meta charset="UTF-8"><title>Ruoff Smart Plan</title>' +
+      '<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]-->' +
+      '<style>body{font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#111}' +
+      'h1{font-size:18pt;color:#002B5C}h2{font-size:14pt;color:#00A89D;margin-top:18pt}' +
+      'table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:6px;text-align:left}' +
+      'hr{border:none;border-top:1px solid #ddd;margin:18pt 0}</style></head><body>' +
+      body + '</body></html>';
+
+    try {
+      const blob = new Blob(['\ufeff', docHtml], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'Ruoff_Smart_Plan_' + name.replace(/[^\w\-]+/g, '_').replace(/_+/g, '_') + '.doc';
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(function () {
+        URL.revokeObjectURL(url);
+        if (link.parentNode) link.parentNode.removeChild(link);
+      }, 400);
+      toast('Word document downloaded — open in Word or Google Docs');
+    } catch (err) {
+      console.error(err);
+      toast('Could not download Word file — try Copy instead', 'error');
+    }
   }
 
   function copyFormattedPlan() {

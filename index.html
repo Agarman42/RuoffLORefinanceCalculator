@@ -480,23 +480,23 @@
   </section>
 
   <!-- Results -->
-  <section id="results-area" class="hidden mt-4">
-    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4">
+  <section id="results-area" class="hidden mt-4 results-area">
+    <div class="results-header">
       <h2 class="text-2xl font-bold">Smart Plan for <span id="results-client-name" class="text-[#00A89D]"></span></h2>
-      <div class="flex flex-wrap gap-2">
-        <button type="button" onclick="RuoffApp.showVisualSummary()" class="px-4 py-2.5 text-sm font-semibold bg-gradient-to-r from-[#00A89D] to-[#F15A29] text-white rounded-xl">Client visual</button>
-        <button type="button" onclick="RuoffApp.printOnePager()" class="px-4 py-2.5 text-sm font-semibold bg-white/10 border border-white/20 rounded-xl"><i class="fas fa-print mr-1"></i> PDF</button>
-        <button type="button" onclick="RuoffApp.downloadAsWordDoc()" class="px-4 py-2.5 text-sm font-semibold bg-emerald-600 text-white rounded-xl"><i class="fas fa-file-word mr-1"></i> Word</button>
-        <button type="button" onclick="RuoffApp.copyFormattedPlan()" class="px-4 py-2.5 text-sm font-semibold bg-zinc-700 text-white rounded-xl"><i class="fas fa-copy mr-1"></i> Copy</button>
-        <button type="button" onclick="RuoffApp.draftInitialEmail()" class="px-4 py-2.5 text-sm font-semibold bg-gradient-to-r from-[#00A89D] via-[#F15A29] to-[#002B5C] text-white rounded-xl">Draft email</button>
+      <div class="results-actions" role="group" aria-label="Plan actions">
+        <button type="button" onclick="RuoffApp.showVisualSummary()" class="results-btn results-btn-accent"><i class="fas fa-chart-pie"></i> Client visual</button>
+        <button type="button" onclick="RuoffApp.printOnePager()" class="results-btn results-btn-pdf"><i class="fas fa-file-pdf"></i> PDF</button>
+        <button type="button" onclick="RuoffApp.downloadAsWordDoc()" class="results-btn results-btn-word"><i class="fas fa-file-word"></i> Word</button>
+        <button type="button" onclick="RuoffApp.copyFormattedPlan()" class="results-btn results-btn-muted"><i class="fas fa-copy"></i> Copy</button>
+        <button type="button" onclick="RuoffApp.draftInitialEmail()" class="results-btn results-btn-primary"><i class="fas fa-envelope"></i> Draft email</button>
       </div>
     </div>
-    <div class="flex border-b border-zinc-200 dark:border-white/15 mb-4 overflow-x-auto">
-      <button type="button" onclick="RuoffApp.showTab(0)" class="tab-btn active px-5 py-3 text-sm font-medium">Executive Summary</button>
-      <button type="button" onclick="RuoffApp.showTab(1)" class="tab-btn px-5 py-3 text-sm font-medium">Scenario Comparison</button>
-      <button type="button" onclick="RuoffApp.showTab(2)" class="tab-btn px-5 py-3 text-sm font-medium">Recommended Plan</button>
-      <button type="button" onclick="RuoffApp.showTab(3)" class="tab-btn px-5 py-3 text-sm font-medium">Sales Scripts</button>
-      <button type="button" onclick="RuoffApp.showTab(4)" class="tab-btn px-5 py-3 text-sm font-medium">Follow-Up</button>
+    <div class="results-tabs" role="tablist" aria-label="Smart Plan sections">
+      <button type="button" role="tab" onclick="RuoffApp.showTab(0)" class="tab-btn active" data-tab="0">Summary</button>
+      <button type="button" role="tab" onclick="RuoffApp.showTab(1)" class="tab-btn" data-tab="1">Compare</button>
+      <button type="button" role="tab" onclick="RuoffApp.showTab(2)" class="tab-btn" data-tab="2">Plan</button>
+      <button type="button" role="tab" onclick="RuoffApp.showTab(3)" class="tab-btn" data-tab="3">Scripts</button>
+      <button type="button" role="tab" onclick="RuoffApp.showTab(4)" class="tab-btn" data-tab="4">Follow-up</button>
     </div>
     <div id="tab-content" class="glass rounded-2xl p-6 sm:p-8 min-h-[400px] prose dark:prose-invert max-w-none"></div>
   </section>
