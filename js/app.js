@@ -1703,22 +1703,29 @@
     });
   }
 
+  function setAddDebtSubmitLabel(text) {
+    const label = $('add-debt-submit-label');
+    if (label) label.textContent = text;
+    else {
+      const btn = $('add-debt-submit');
+      if (btn) btn.textContent = text;
+    }
+  }
+
   function openAddDebtModal(prefillType) {
     const title = $('add-debt-title');
     if (editingDebtIndex === undefined) {
       resetAddDebtForm(prefillType || '');
       if (title) title.textContent = 'Add a debt';
-      const btn = $('add-debt-submit');
-      if (btn) btn.textContent = 'Save debt';
+      setAddDebtSubmitLabel('Save debt');
       const btn2 = $('add-debt-submit-another');
       if (btn2) {
         btn2.classList.remove('hidden');
-        btn2.textContent = 'Save & add another';
+        btn2.classList.remove('is-saved');
       }
     } else {
       if (title) title.textContent = 'Edit debt';
-      const btn = $('add-debt-submit');
-      if (btn) btn.textContent = 'Save changes';
+      setAddDebtSubmitLabel('Save changes');
       const btn2 = $('add-debt-submit-another');
       if (btn2) btn2.classList.add('hidden');
     }
@@ -1732,8 +1739,9 @@
   function closeAddDebtModal() {
     setModalOpen('add-debt-modal', false);
     editingDebtIndex = undefined;
-    const btn = $('add-debt-submit');
-    if (btn) btn.textContent = 'Save debt';
+    setAddDebtSubmitLabel('Save debt');
+    const btn2 = $('add-debt-submit-another');
+    if (btn2) btn2.classList.remove('is-saved');
   }
 
   function readDebtForm() {
@@ -1785,6 +1793,25 @@
       toast(andAnother ? 'Saved — add the next one' : 'Debt added');
       if (andAnother) {
         resetAddDebtForm(form.type || '');
+        const btn2 = $('add-debt-submit-another');
+        if (btn2) {
+          const icon = btn2.querySelector('.btn-debt-another-icon i');
+          btn2.classList.remove('is-saved');
+          void btn2.offsetWidth; // reflow so pulse restarts
+          btn2.classList.add('is-saved');
+          if (icon) {
+            icon.classList.remove('fa-plus');
+            icon.classList.add('fa-check');
+          }
+          clearTimeout(btn2._savedTimer);
+          btn2._savedTimer = setTimeout(function () {
+            btn2.classList.remove('is-saved');
+            if (icon) {
+              icon.classList.remove('fa-check');
+              icon.classList.add('fa-plus');
+            }
+          }, 700);
+        }
         setTimeout(function () {
           if ($('new-debt-balance')) $('new-debt-balance').focus();
         }, 50);
