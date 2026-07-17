@@ -21,7 +21,7 @@
   --text: #0f172a;
   --muted: #64748b;
   /* Single reading column in guided mode — everything aligns to this */
-  --guided-max: 40rem;   /* 640px — one consistent card width */
+  --guided-max: 46rem;   /* ~736px — slightly wider reading column */
   --expert-max: 72rem;   /* full workspace */
   --page-gutter: 1.25rem;
 }
@@ -577,24 +577,28 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* ── Mini-nav ───────────────────────────────────────────── */
+/* Full-bleed bar background; nav items align to same column as main content */
 .mini-nav {
   position: sticky;
   top: 0;
   z-index: 45;
   display: flex;
   gap: 0.3rem;
-  padding: 0.5rem 0.75rem;
+  /* Match main.app-main content column (expert-max + gutters) */
+  padding: 0.5rem max(var(--page-gutter), calc(50% - var(--expert-max) / 2));
   background: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   overflow-x: auto;
+  box-sizing: border-box;
+  width: 100%;
 }
 .dark .mini-nav {
   background: rgba(6, 16, 31, 0.82);
   border-bottom-color: rgba(255, 255, 255, 0.06);
 }
 .mini-nav-btn {
-  flex: 1 0 auto;
+  flex: 1 1 0;
   min-width: 4.25rem;
   padding: 0.45rem 0.55rem;
   border-radius: 9999px;
@@ -1242,6 +1246,11 @@ body.mode-guided .wizard-panel section.glass > button {
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(16px);
   box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.1);
+  /* Align metrics with main content column */
+  padding-left: max(1rem, calc(50% - var(--expert-max) / 2)) !important;
+  padding-right: max(1rem, calc(50% - var(--expert-max) / 2)) !important;
+  box-sizing: border-box;
+  width: 100%;
 }
 .dark .sticky-results {
   background: rgba(6, 16, 31, 0.92);
