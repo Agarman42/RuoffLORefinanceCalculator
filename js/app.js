@@ -2290,7 +2290,16 @@
       'CRITICAL: CANONICAL NUMBERS and SCENARIO ALTERNATIVES are provided. Use ONLY those figures. ' +
       'Do not recalculate payments, interest, LTV, cash back, or break-even. ' +
       'If a value is null, say it is not applicable. ' +
-      'Never use emojis. Return ONLY valid JSON. Use semantic HTML in string values: h2,h3,p,ul,li,table,strong,em.\n' +
+      'Never use emojis. Return ONLY valid JSON.\n' +
+      'HTML FORMATTING (required for readability):\n' +
+      '- Use semantic HTML only: h2, h3, p, ul, ol, li, table, thead, tbody, tr, th, td, strong, em, blockquote.\n' +
+      '- Start each section with one clear h2 title.\n' +
+      '- Use short paragraphs (2-4 sentences max). Prefer bullet lists for takeaways.\n' +
+      '- Comparison data MUST be an HTML table with a header row (Metric | Current | Proposed).\n' +
+      '- For scripts: each script is its own <p><strong>Label:</strong> spoken copy…</p> (Opener, Objection, Voicemail, Text, Email).\n' +
+      '- For follow-up: use <ul><li><strong>Day 1:</strong> …</li>…</ul> with Day 1, 3, 7, 14, 30.\n' +
+      '- For alternative recommendation: use <h3>Alternative recommendation</h3> then bullets comparing metrics.\n' +
+      '- Do not use inline styles, class attributes, markdown, or code fences.\n' +
       'PRIMARY vs ALTERNATIVE:\n' +
       '- The PRIMARY path is the current calculator selection (id "primary" in scenarioAlternatives). ' +
       'Narrate it as the plan the LO/client just modeled — all top-level canonical numbers match primary.\n' +
@@ -2429,23 +2438,27 @@
           if (d.interestAvoidedIfPaidOff > 0) bits.push('~' + money(d.interestAvoidedIfPaidOff) + ' interest avoided');
           return '<li><strong>' + escapeHtml(d.name) + '</strong> — ' + bits.join(' · ') + '</li>';
         }).join('') + '</ul>'
-      : '<p class="opacity-70">No other consumer debts marked for payoff.</p>';
+      : '<p>No other consumer debts marked for payoff.</p>';
 
+    const cf = n.monthlyCashFlowChange;
     const summary =
-      '<h2>Great News, ' + escapeHtml((n.clientName || 'there').split(' ')[0]) + '!</h2>' +
+      '<h2>Great news, ' + escapeHtml((n.clientName || 'there').split(' ')[0]) + '</h2>' +
       '<p>Based on the numbers in your calculator (not a loan offer), here is a clear snapshot.</p>' +
-      '<div class="glass rounded-2xl p-6 my-4">' +
-      '<p><strong>Monthly cash-flow change:</strong> ' + money(n.monthlyCashFlowChange) + '</p>' +
-      '<p><strong>New total housing (est.):</strong> ' + money(n.newTotalHousing) + ' (P&I ' + money(n.newPi) + ')</p>' +
-      '<p><strong>Debts paid off:</strong> ' + money(n.totalDebtsPaidOff) + '</p>' +
-      (n.consumerDebtInterestAvoided > 0
-        ? '<p><strong>Est. consumer debt interest avoided:</strong> ' + money(n.consumerDebtInterestAvoided) + ' (from rates/terms entered)</p>'
-        : '') +
-      '<p><strong>' + cashLabel + ':</strong> ' + money(Math.abs(n.cashAtClosing)) + ' after ' + money(n.closingCosts) + ' closing costs</p>' +
-      '<p><strong>Break-even:</strong> ' + (n.breakEvenMonths != null ? n.breakEvenMonths + ' months' : 'N/A') + '</p>' +
-      '<p><strong>Mortgage interest vs keep current:</strong> ' + money(n.mortgageInterestSavings) + '</p>' +
+      '<div class="plan-kpi-strip">' +
+        '<div class="plan-kpi-chip"><span class="lbl">Cash flow</span><span class="val">' + (cf > 0 ? '+' : '') + money(cf) + '</span></div>' +
+        '<div class="plan-kpi-chip"><span class="lbl">New housing</span><span class="val">' + money(n.newTotalHousing) + '</span></div>' +
+        '<div class="plan-kpi-chip"><span class="lbl">' + cashLabel + '</span><span class="val">' + money(Math.abs(n.cashAtClosing)) + '</span></div>' +
+        '<div class="plan-kpi-chip"><span class="lbl">Break-even</span><span class="val">' + (n.breakEvenMonths != null ? n.breakEvenMonths + ' mo' : 'N/A') + '</span></div>' +
       '</div>' +
-      '<p class="text-sm opacity-75">These figures are estimates for discussion only and are not a commitment to lend.</p>';
+      '<ul>' +
+      '<li><strong>Debts paid off:</strong> ' + money(n.totalDebtsPaidOff) + '</li>' +
+      (n.consumerDebtInterestAvoided > 0
+        ? '<li><strong>Est. consumer interest avoided:</strong> ' + money(n.consumerDebtInterestAvoided) + '</li>'
+        : '') +
+      '<li><strong>Mortgage interest vs keep current:</strong> ' + money(n.mortgageInterestSavings) + '</li>' +
+      '<li><strong>Closing costs (est.):</strong> ' + money(n.closingCosts) + '</li>' +
+      '</ul>' +
+      '<p><em>Estimates only — not a commitment to lend.</em></p>';
 
     const table =
       '<h2>Scenario comparison</h2>' +
@@ -2453,19 +2466,19 @@
       '<tr><td>Loan / balance</td><td>' + money(n.currentBalance) + '</td><td>' + money(n.newLoanAmount) + '</td></tr>' +
       '<tr><td>Rate</td><td>' + n.currentRate + '%</td><td>' + n.newRate + '%</td></tr>' +
       '<tr><td>Term remaining / new</td><td>' + n.yearsRemaining + ' yrs</td><td>' + n.newTerm + ' yrs</td></tr>' +
-      '<tr><td>P&I</td><td>' + money(n.currentPi) + '</td><td>' + money(n.newPi) + '</td></tr>' +
+      '<tr><td>P&amp;I</td><td>' + money(n.currentPi) + '</td><td>' + money(n.newPi) + '</td></tr>' +
       '<tr><td>Total housing (est.)</td><td>' + money(n.currentTotalHousing) + '</td><td>' + money(n.newTotalHousing) + '</td></tr>' +
       '<tr><td>LTV</td><td>' + n.currentLtv + '%</td><td>' + n.newLtv + '%</td></tr>' +
       '<tr><td>Equity</td><td>' + money(n.currentEquity) + '</td><td>' + money(n.newEquity) + '</td></tr>' +
       '</tbody></table>' +
-      '<h3 class="mt-4">Debts marked for payoff</h3>' + debtListHtml;
+      '<h3>Debts marked for payoff</h3>' + debtListHtml;
 
     let altHtml = '';
     const alts = n.scenarioAlternatives || [];
     if (alts.length > 1) {
       altHtml =
-        '<h3>Alternative paths (calculated)</h3>' +
-        '<p class="text-sm opacity-80">Same engine as the primary path — compare before choosing.</p><ul>' +
+        '<h3>Alternative recommendation</h3>' +
+        '<p>Same engine as the primary path — compare before choosing.</p><ul>' +
         alts.filter(function (a) { return a.id !== 'primary'; }).map(function (a) {
           return '<li><strong>' + escapeHtml(a.label) + '</strong>: loan ' + money(a.newLoanAmount) +
             ', cash-flow ' + money(a.monthlyCashFlowChange) +
@@ -2479,16 +2492,17 @@
     }
 
     const plan =
-      '<h2>Recommended discussion points</h2>' +
+      '<h2>Recommended plan</h2>' +
       '<ul>' +
-      '<li>Proposed loan: ' + money(n.newLoanAmount) + ' at ' + n.newRate + '% for ' + n.newTerm + ' years</li>' +
-      '<li>Monthly cash-flow change: ' + money(n.monthlyCashFlowChange) + '</li>' +
-      '<li>' + cashLabel + ': ' + money(Math.abs(n.cashAtClosing)) + ' (includes ' + money(n.closingCosts) + ' est. closing costs)</li>' +
+      '<li><strong>Proposed loan:</strong> ' + money(n.newLoanAmount) + ' at ' + n.newRate + '% for ' + n.newTerm + ' years</li>' +
+      '<li><strong>Monthly cash-flow change:</strong> ' + money(n.monthlyCashFlowChange) + '</li>' +
+      '<li><strong>' + cashLabel + ':</strong> ' + money(Math.abs(n.cashAtClosing)) + ' (includes ' + money(n.closingCosts) + ' est. closing costs)</li>' +
       (n.consumerDebtInterestAvoided > 0
-        ? '<li>Consumer debt interest avoided (est.): ' + money(n.consumerDebtInterestAvoided) + '</li>'
+        ? '<li><strong>Consumer debt interest avoided (est.):</strong> ' + money(n.consumerDebtInterestAvoided) + '</li>'
         : '<li>Add optional rate &amp; months on high-APR debts for stronger interest-avoided estimates</li>') +
       '<li>Review each debt marked for payoff with your loan officer</li>' +
       '</ul>' +
+      '<h3>Debts included</h3>' +
       debtListHtml +
       altHtml +
       '<p>Next step: talk with your Ruoff loan officer to verify pricing, closing costs, and eligibility.</p>';
@@ -2497,22 +2511,94 @@
 
     const scripts =
       '<h2>Sales scripts</h2>' +
-      '<p><strong>Opener:</strong> \"I ran a smart savings scenario for you — it shows about ' +
+      '<p><strong>Opener:</strong> I ran a smart savings scenario for you — it shows about ' +
       money(n.monthlyCashFlowChange) + ' in monthly cash-flow change and ' +
       money(Math.abs(n.cashAtClosing)) + ' ' + (n.cashAtClosingLabel === 'cash_back' ? 'cash back' : 'cash to close') +
-      ' after estimated costs. Want to walk through it for 10 minutes?\"</p>';
+      ' after estimated costs. Want to walk through it for 10 minutes?</p>' +
+      '<p><strong>Value check:</strong> The calculator shows ' + money(n.totalDebtsPaidOff) +
+      ' in debts paid off in this scenario. Shall we prioritize high-rate balances first?</p>' +
+      '<p><strong>Close:</strong> If the numbers still look good after underwriting, we can lock pricing and order the appraisal. Are you free for a quick call tomorrow?</p>';
 
     const follow =
-      '<h2>Follow-up sequence</h2>' +
+      '<h2>30-day follow-up</h2>' +
       '<ul>' +
-      '<li><strong>Day 1:</strong> Send visual summary + executive summary</li>' +
-      '<li><strong>Day 3:</strong> Short text referencing monthly cash-flow figure</li>' +
+      '<li><strong>Day 1:</strong> Send visual summary + executive summary with the ' + money(n.monthlyCashFlowChange) + ' cash-flow figure.</li>' +
+      '<li><strong>Day 3:</strong> Short text: “Any questions on the refinance snapshot I sent?”</li>' +
       '<li><strong>Day 7:</strong> Voicemail + email with break-even of ' +
-      (n.breakEvenMonths != null ? n.breakEvenMonths + ' months' : 'N/A') + '</li>' +
-      '<li><strong>Day 14 / 30:</strong> Value check-in; update rates if market moved</li>' +
+      (n.breakEvenMonths != null ? n.breakEvenMonths + ' months' : 'N/A') + '.</li>' +
+      '<li><strong>Day 14:</strong> Value check-in; update rate if the market moved.</li>' +
+      '<li><strong>Day 30:</strong> Final nudge with clear next step (application / appraisal).</li>' +
       '</ul>';
 
     return [summary, table, plan, scripts, follow];
+  }
+
+  /**
+   * Enhance AI/fallback HTML for scannable Smart Plan tabs.
+   */
+  function formatPlanHtml(raw, tabIndex) {
+    if (!raw || !String(raw).trim()) {
+      return '<div class="plan-doc plan-doc-tab-' + tabIndex + '"><p class="plan-empty">Content not loaded.</p></div>';
+    }
+    const host = document.createElement('div');
+    host.innerHTML = String(raw).trim();
+
+    // Tables → scroll wrap + class
+    host.querySelectorAll('table').forEach(function (table) {
+      table.classList.add('plan-table');
+      if (!table.parentElement || !table.parentElement.classList.contains('plan-table-wrap')) {
+        const wrap = document.createElement('div');
+        wrap.className = 'plan-table-wrap';
+        table.parentNode.insertBefore(wrap, table);
+        wrap.appendChild(table);
+      }
+    });
+
+    // Day N list items → timeline chips
+    host.querySelectorAll('li').forEach(function (li) {
+      const strong = li.querySelector('strong, b');
+      const head = ((strong && strong.textContent) || li.textContent || '').trim();
+      if (/^day\s*\d+/i.test(head) || /^day\s*\d+\s*\/\s*\d+/i.test(head)) {
+        li.classList.add('plan-day-item');
+      }
+    });
+
+    // Script-style paragraphs
+    host.querySelectorAll('p').forEach(function (p) {
+      const strong = p.querySelector(':scope > strong, :scope > b');
+      const label = ((strong && strong.textContent) || '').trim();
+      const full = (p.textContent || '').trim();
+      if (
+        /^(opener|script|email|text|voicemail|call|close|objection|value check|follow.?up)/i.test(label) ||
+        /^(opener|script\s*\d*|email|text|voicemail)\s*:/i.test(full)
+      ) {
+        p.classList.add('plan-script-card');
+      }
+    });
+
+    // Wrap "Alternative recommendation" blocks in a callout
+    const headings = host.querySelectorAll('h2, h3');
+    headings.forEach(function (h) {
+      if (!/alternative/i.test(h.textContent || '')) return;
+      if (h.closest('.plan-callout')) return;
+      const box = document.createElement('div');
+      box.className = 'plan-callout';
+      h.parentNode.insertBefore(box, h);
+      box.appendChild(h);
+      let next = box.nextSibling;
+      while (next) {
+        if (next.nodeType === 1 && /^H[12]$/i.test(next.tagName) && !/alternative/i.test(next.textContent || '')) break;
+        const move = next;
+        next = next.nextSibling;
+        if (move.nodeType === 1 || (move.nodeType === 3 && String(move.textContent).trim())) {
+          box.appendChild(move);
+        } else if (move.nodeType === 3) {
+          box.appendChild(move);
+        }
+      }
+    });
+
+    return '<div class="plan-doc plan-doc-tab-' + tabIndex + '">' + host.innerHTML + '</div>';
   }
 
   function showTab(n) {
@@ -2528,11 +2614,10 @@
     const contentArea = $('tab-content');
     if (!contentArea) return;
     if (!window.currentPlan) {
-      contentArea.innerHTML = '<div class="text-center py-16 text-lg opacity-60">Generate a plan first</div>';
+      contentArea.innerHTML = '<div class="plan-doc"><p class="plan-empty">Generate a plan first</p></div>';
       return;
     }
-    contentArea.innerHTML = window.currentPlan.tabs[n] || '<p>Content not loaded.</p>';
-    // Keep the active tab fully in view if the row ever scrolls
+    contentArea.innerHTML = formatPlanHtml(window.currentPlan.tabs[n], n);
     const activeBtn = document.querySelector('#results-area .tab-btn.active');
     if (activeBtn && activeBtn.scrollIntoView) {
       try {
