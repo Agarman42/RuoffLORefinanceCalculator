@@ -58,6 +58,32 @@
     </button>
   </div>
 
+  <!-- Meeting strip: visible when borrower switches to "See everything" -->
+  <div id="meeting-strip" class="meeting-strip no-print" aria-label="Live numbers" role="status">
+    <div class="meeting-strip-inner">
+      <div class="meeting-metric">
+        <span class="ms-label">Cash flow</span>
+        <span id="ms-cashflow" class="ms-value number">$0</span>
+      </div>
+      <div class="meeting-metric">
+        <span class="ms-label">At closing</span>
+        <span id="ms-cash" class="ms-value number">$0</span>
+      </div>
+      <div class="meeting-metric">
+        <span class="ms-label">Break-even</span>
+        <span id="ms-breakeven" class="ms-value number">—</span>
+      </div>
+      <div class="meeting-metric meeting-metric-wide">
+        <span class="ms-label">Housing</span>
+        <span id="ms-housing" class="ms-value number ms-housing">—</span>
+      </div>
+      <div class="meeting-strip-actions">
+        <button type="button" class="ms-btn" onclick="RuoffApp.printOnePager()" title="Print snapshot"><i class="fas fa-print"></i><span>PDF</span></button>
+        <button type="button" class="ms-btn ms-btn-primary" onclick="RuoffApp.sendToMyLO()" title="Email this snapshot to your loan officer"><i class="fas fa-paper-plane"></i><span>Send to LO</span></button>
+      </div>
+    </div>
+  </div>
+
   <div id="wizard-rail" class="wizard-rail no-print" aria-label="Progress"></div>
 
   <div id="resume-banner" class="resume-banner hidden no-print" role="status">
@@ -338,6 +364,11 @@
         <span class="live-preview-chip mb-0">Break-even <strong id="plan-be">—</strong></span>
       </div>
     </div>
+    <div class="flex flex-wrap gap-2 mb-4 no-print justify-center">
+      <button type="button" onclick="RuoffApp.printOnePager()" class="btn-ghost text-sm py-2.5"><i class="fas fa-print mr-1"></i> Print snapshot</button>
+      <button type="button" onclick="RuoffApp.shareSnapshot()" class="btn-ghost text-sm py-2.5"><i class="fas fa-share-nodes mr-1"></i> Share numbers</button>
+      <button type="button" onclick="RuoffApp.sendToMyLO()" class="btn-primary text-sm py-2.5"><i class="fas fa-paper-plane mr-1"></i> Send to my LO</button>
+    </div>
     <button type="button" data-generate-btn onclick="RuoffApp.generateSmartPlan()"
             class="cta-generate">
       <span>Create my personalized plan</span>
@@ -351,9 +382,10 @@
       <h2 class="text-2xl font-bold">Your plan<span id="results-client-name" class="text-[#00A89D]"></span></h2>
       <!-- name filled as ": Name" by app when present -->
       <div class="flex flex-wrap gap-2">
+        <button type="button" onclick="RuoffApp.sendToMyLO()" class="px-4 py-2.5 text-sm font-semibold bg-gradient-to-r from-[#00A89D] to-[#F15A29] text-white rounded-xl"><i class="fas fa-paper-plane mr-1"></i> Send to my LO</button>
+        <button type="button" onclick="RuoffApp.printOnePager()" class="px-4 py-2.5 text-sm font-semibold bg-white/10 border border-white/20 rounded-xl"><i class="fas fa-print mr-1"></i> PDF</button>
         <button type="button" onclick="RuoffApp.downloadAsWordDoc()" class="px-4 py-2.5 text-sm font-semibold bg-emerald-600 text-white rounded-xl"><i class="fas fa-file-word mr-1"></i> Download</button>
         <button type="button" onclick="RuoffApp.copyFormattedPlan()" class="px-4 py-2.5 text-sm font-semibold bg-zinc-700 text-white rounded-xl"><i class="fas fa-copy mr-1"></i> Copy</button>
-        <button type="button" onclick="RuoffApp.contactMyLO()" class="px-4 py-2.5 text-sm font-semibold bg-[#00A89D] text-white rounded-xl"><i class="fas fa-envelope mr-1"></i> Contact my LO</button>
       </div>
     </div>
     <div class="flex border-b border-zinc-200 dark:border-white/15 mb-4 overflow-x-auto">
@@ -387,16 +419,20 @@
 </div>
 
 
-<div class="sticky-results md:hidden px-4 py-3 flex items-center justify-between gap-3 shadow-2xl">
-  <div class="text-sm">
-    <div class="opacity-60 text-xs">Cash flow</div>
-    <div id="sticky-cashflow" class="font-black number">$0</div>
+<div class="sticky-results md:hidden px-4 py-3 flex items-center justify-between gap-2 shadow-2xl">
+  <div class="text-sm min-w-0">
+    <div class="opacity-60 text-[10px] uppercase tracking-wide">Cash flow</div>
+    <div id="sticky-cashflow" class="font-black number text-sm">$0</div>
   </div>
-  <div class="text-sm text-right">
-    <div class="opacity-60 text-xs">At closing</div>
+  <div class="text-sm min-w-0">
+    <div class="opacity-60 text-[10px] uppercase tracking-wide">Close</div>
     <div id="sticky-cash" class="font-black number text-sm">$0</div>
   </div>
-  <button type="button" data-generate-btn onclick="RuoffApp.generateSmartPlan()" class="px-4 py-2.5 bg-[#00A89D] text-white text-sm font-bold rounded-xl">Plan</button>
+  <div class="text-sm min-w-0">
+    <div class="opacity-60 text-[10px] uppercase tracking-wide">Break-even</div>
+    <div id="sticky-breakeven" class="font-black number text-sm">—</div>
+  </div>
+  <button type="button" onclick="RuoffApp.sendToMyLO()" class="px-3 py-2.5 bg-[#00A89D] text-white text-xs font-bold rounded-xl shrink-0">Send LO</button>
 </div>
 
 <footer class="max-w-6xl mx-auto px-4 sm:px-6 py-10 text-center text-sm leading-relaxed opacity-70 border-t border-zinc-200 dark:border-white/10 mt-6">
@@ -404,7 +440,7 @@
   Ruoff Mortgage Company, Inc., d/b/a Ruoff Mortgage. Equal Housing Lender. NMLS#141868.
   <a href="http://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/141868" target="_blank" rel="noopener" class="text-[#00A89D] font-medium hover:underline">Licensing</a>
   <p id="app-version" class="mt-6 text-xs font-mono opacity-80 tracking-wide">
-    Ruoff Smart Savings Calculator · Borrower · v3.3.1 · 2026-07-16
+    Ruoff Smart Savings Calculator · Borrower · v3.4.0 · 2026-07-17
   </p>
 </footer>
 

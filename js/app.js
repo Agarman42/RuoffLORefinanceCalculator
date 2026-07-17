@@ -789,16 +789,22 @@
     const cashText = scenario.cashAtClosing === 0
       ? 'Even'
       : ((scenario.isCashBack ? 'Back ' : 'Due ') + money(Math.abs(scenario.cashAtClosing)));
+    const beText = scenario.breakEvenMonths != null ? scenario.breakEvenMonths + ' mo' : 'N/A';
+    const housingText = money(scenario.oldHousing) + ' → ' + money(scenario.newHousing);
 
-    ['sticky-cashflow', 'dock-cashflow'].forEach(function (id) {
+    ['sticky-cashflow', 'dock-cashflow', 'ms-cashflow'].forEach(function (id) {
       const el = $(id);
       if (!el) return;
       el.textContent = cfText;
       el.className = (el.className || '').replace(/\b(pos|neg)\b/g, '').trim() + ' ' + (cf > 0 ? 'pos' : cf < 0 ? 'neg' : '');
     });
-    ['sticky-cash', 'dock-cash'].forEach(function (id) {
+    ['sticky-cash', 'dock-cash', 'ms-cash'].forEach(function (id) {
       setText(id, cashText);
     });
+    ['sticky-breakeven', 'ms-breakeven'].forEach(function (id) {
+      setText(id, beText);
+    });
+    setText('ms-housing', housingText);
   }
 
   function updateWizardPreviews(scenario) {
@@ -2395,39 +2401,73 @@
     }
   }
 
+  function buildBorrowerSnapshotBody(client, s, loName) {
+    const cf = s.monthlyCashFlowChange;
+    const debts = (state.debts || []).filter(function (d) {
+      return d.payOff && d.name !== 'Current Mortgage';
+    });
+    const debtLines = debts.length
+      ? debts.map(function (d) {
+          return '  · ' + d.name + ': ' + money(d.bal) + ' balance · ' + money(d.pay) + '/mo';
+        }).join('\n')
+      : '  · Mortgage only (no extra debts selected)';
+    const interestLine = s.mortgageInterest
+      ? (s.mortgageInterest.savings >= 0
+          ? money(s.mortgageInterest.savings) + ' less interest vs keep current (est.)'
+          : money(Math.abs(s.mortgageInterest.savings)) + ' more interest vs keep current (est.)')
+      : 'N/A';
+
+    return (
+      'Hi ' + loName + ',\n\n' +
+      'I used the Ruoff Smart Savings Calculator and would like to talk through this scenario.\n\n' +
+      '── My contact ──\n' +
+      'Name: ' + (client.clientName || '') + '\n' +
+      'Phone: ' + (client.clientPhone || '(not provided)') + '\n' +
+      'Email: ' + (client.clientEmail || '(not provided)') + '\n\n' +
+      '── Snapshot (estimates only — not a loan offer) ──\n' +
+      'Today housing: ' + money(s.oldHousing) + ' (P&I ' + money(s.oldPi) + ')\n' +
+      'Proposed housing: ' + money(s.newHousing) + ' (P&I ' + money(s.newPi) + ')\n' +
+      'Cash-flow change: ' + (cf > 0 ? '+' : '') + money(cf) + ' / month\n' +
+      (s.cashAtClosing === 0
+        ? 'At closing: even\n'
+        : (s.isCashBack ? 'Est. cash back: ' : 'Est. cash to close: ') + money(Math.abs(s.cashAtClosing)) + '\n') +
+      'Break-even: ' + (s.breakEvenMonths != null ? s.breakEvenMonths + ' months' : 'N/A') + '\n' +
+      'Home value: ' + money(s.homeValue) + ' · Equity: ' + money(s.equity) + ' · LTV: ' + s.ltv + '%\n' +
+      'Proposed loan: ' + money(s.newLoanAmount) + ' @ ' + s.newRate + '% / ' + s.newTerm + ' years\n' +
+      'New LTV: ' + s.newLtv + '% · Closing costs (est.): ' + money(s.closingCosts) + '\n' +
+      'Interest: ' + interestLine + '\n' +
+      'Debts included in payoff:\n' + debtLines + '\n\n' +
+      'Goals / notes:\n' + (client.clientNotes || 'None entered') + '\n\n' +
+      'Thank you!\n' + (client.clientName || '')
+    );
+  }
+
   function contactMyLO() {
     const client = collectClient();
     saveClient();
     if (!lastScenario) liveUpdate();
     const s = lastScenario;
-    const loEmail = state.loContact.email || '';
-    const loName = state.loContact.name || 'there';
+    const loEmail = (state.loContact && state.loContact.email) || '';
+    const loName = (state.loContact && state.loContact.name) || 'there';
 
-    const subject = 'Interested in discussing my refinance plan – ' + (client.clientName || '');
-    const body =
-      'Hi ' + loName + ',\n\n' +
-      'I used the Ruoff Smart Savings Calculator and would like to talk through a scenario.\n\n' +
-      'My contact info:\n' +
-      '- Name: ' + (client.clientName || '') + '\n' +
-      '- Phone: ' + (client.clientPhone || '(not provided)') + '\n' +
-      '- Email: ' + (client.clientEmail || '(not provided)') + '\n\n' +
-      'Calculator highlights (estimates only):\n' +
-      '- Monthly cash-flow change: ' + money(s.monthlyCashFlowChange) + '\n' +
-      '- Debts paid off: ' + money(s.totalDebtsPaidOff) + '\n' +
-      '- ' + (s.isCashBack ? 'Cash back' : 'Cash to close') + ': ' + money(Math.abs(s.cashAtClosing)) + '\n' +
-      '- Proposed loan: ' + money(s.newLoanAmount) + ' at ' + s.newRate + '% for ' + s.newTerm + ' years\n' +
-      '- Break-even: ' + (s.breakEvenMonths != null ? s.breakEvenMonths + ' months' : 'N/A') + '\n\n' +
-      'Goals / notes:\n' + (client.clientNotes || 'None entered') + '\n\n' +
-      'Thank you!\n' + (client.clientName || '');
+    const subject = 'Refinance snapshot – ' + (client.clientName || 'borrower') +
+      ' · ' + (s.monthlyCashFlowChange > 0 ? '+' : '') + money(s.monthlyCashFlowChange) + ' cash flow';
+    const body = buildBorrowerSnapshotBody(client, s, loName);
 
     if (!loEmail) {
-      // No LO email in link — let borrower fill To: field, still compose body
       toast('Tip: ask your LO for a personal link so their email is pre-filled. Opening your mail app…');
+    } else {
+      toast('Opening email to ' + (state.loContact.name || 'your loan officer') + '…');
     }
     window.location.href =
       'mailto:' + encodeURIComponent(loEmail) +
       '?subject=' + encodeURIComponent(subject) +
       '&body=' + encodeURIComponent(body);
+  }
+
+  /** Alias used by borrower CTAs */
+  function sendToMyLO() {
+    contactMyLO();
   }
 
   function copyBorrowerLink() {
@@ -2534,10 +2574,14 @@
     loadSavedScenarios();
     renderScenarioCompare();
 
-    // Experience mode (guided wizard default) + resume step
+    // Experience mode: LO defaults to Full workspace; borrower to Guided.
+    // Only honor a saved preference if the user has toggled before.
     wireModeToggle();
-    let savedMode = 'guided';
-    try { savedMode = localStorage.getItem('ruoff.experienceMode.' + MODE) || 'guided'; } catch (e) {}
+    let savedMode = null;
+    try { savedMode = localStorage.getItem('ruoff.experienceMode.' + MODE); } catch (e) {}
+    if (!savedMode) {
+      savedMode = MODE === 'lo' ? 'expert' : 'guided';
+    }
     restoreWizardProgress();
     setExperienceMode(savedMode, { silent: true });
     if (experienceMode === 'guided') {
@@ -2818,12 +2862,85 @@
   }
 
   // ─── Print / PDF one-pager + share ───────────────────────
+  function buildMiniAmortSvg(s) {
+    if (!C.amortizationBalanceSeries || !s) return '';
+    const keep = C.amortizationBalanceSeries(s.currentBalance, s.currentRate, s.yearsRemaining, 12);
+    const refi = C.amortizationBalanceSeries(s.newLoanAmount, s.newRate, s.newTerm, 12);
+    const maxBal = Math.max(s.currentBalance || 0, s.newLoanAmount || 0, 1);
+    const maxYears = Math.max(s.yearsRemaining || 0, s.newTerm || 0, 1);
+    const W = 520;
+    const H = 120;
+    const pad = { t: 10, r: 10, b: 22, l: 36 };
+    const plotW = W - pad.l - pad.r;
+    const plotH = H - pad.t - pad.b;
+    function xOf(year) { return pad.l + (year / maxYears) * plotW; }
+    function yOf(bal) { return pad.t + plotH - (bal / maxBal) * plotH; }
+    function toPolyline(series) {
+      return series.points.map(function (pt) {
+        return xOf(pt.year).toFixed(1) + ',' + yOf(pt.balance).toFixed(1);
+      }).join(' ');
+    }
+    const ticks = [0, Math.round(maxYears / 2), Math.round(maxYears)];
+    const grid = ticks.map(function (y) {
+      const x = xOf(y);
+      return '<line x1="' + x + '" y1="' + pad.t + '" x2="' + x + '" y2="' + (pad.t + plotH) +
+        '" stroke="#cbd5e1" stroke-width="1"/>' +
+        '<text x="' + x + '" y="' + (H - 6) + '" text-anchor="middle" class="op-amort-axis">' + y + 'y</text>';
+    }).join('');
+    return (
+      '<svg class="op-amort-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Balance over time">' +
+      '<rect x="' + pad.l + '" y="' + pad.t + '" width="' + plotW + '" height="' + plotH +
+        '" fill="#f8fafc" rx="6"/>' +
+      grid +
+      '<polyline fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="' +
+        toPolyline(keep) + '"/>' +
+      '<polyline fill="none" stroke="#00A89D" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="' +
+        toPolyline(refi) + '"/>' +
+      '</svg>' +
+      '<div class="op-amort-legend"><span class="op-leg-keep">Keep current</span><span class="op-leg-refi">Proposed refi</span></div>'
+    );
+  }
+
+  function buildLoCardHtml(lo) {
+    if (!lo || (!lo.name && !lo.email && !lo.cell && !lo.nmls && !lo.phone)) return '';
+    const phone = lo.cell || lo.phone || '';
+    const initials = (lo.name || 'LO').split(/\s+/).filter(Boolean).slice(0, 2)
+      .map(function (p) { return p.charAt(0).toUpperCase(); }).join('') || 'LO';
+    const photo = lo.photo
+      ? '<img class="op-lo-photo" src="' + escapeHtml(lo.photo) + '" alt="">'
+      : '<div class="op-lo-initials">' + escapeHtml(initials) + '</div>';
+    return (
+      '<aside class="op-lo-card">' +
+      photo +
+      '<div class="op-lo-meta">' +
+      '<div class="op-label">Your loan officer</div>' +
+      (lo.name ? '<div class="op-lo-name">' + escapeHtml(lo.name) + '</div>' : '') +
+      (lo.nmls ? '<div class="op-lo-line">NMLS ' + escapeHtml(lo.nmls) + '</div>' : '') +
+      (phone ? '<div class="op-lo-line">' + escapeHtml(phone) + '</div>' : '') +
+      (lo.email ? '<div class="op-lo-line">' + escapeHtml(lo.email) + '</div>' : '') +
+      '</div></aside>'
+    );
+  }
+
   function buildOnePagerHtml() {
     if (!lastScenario) liveUpdate();
     const s = lastScenario;
     const client = collectClient();
     const brand = state.branding || {};
     const lo = MODE === 'borrower' ? state.loContact : brand;
+    // Normalize phone field for LO branding (cell) vs borrower link (phone)
+    const loNorm = lo ? {
+      name: lo.name || '',
+      nmls: lo.nmls || '',
+      email: lo.email || '',
+      cell: lo.cell || lo.phone || '',
+      phone: lo.phone || lo.cell || '',
+      photo: lo.photo || ''
+    } : {};
+    const brandColor = safeHexColor(
+      (MODE === 'borrower' ? (state.loContact && state.loContact.color) : brand.color) || '',
+      '#00A89D'
+    );
     const cf = s.monthlyCashFlowChange;
     const cashLabel = s.cashAtClosing === 0 ? 'Even at closing' : (s.isCashBack ? 'Est. cash back' : 'Est. cash to close');
     const debts = (state.debts || []).filter(function (d) { return d.payOff; });
@@ -2832,16 +2949,17 @@
     }).join('') || '<tr><td colspan="3">Mortgage only</td></tr>';
 
     return (
-      '<div class="onepager">' +
+      '<div class="onepager" style="--op-brand:' + brandColor + '">' +
       '<header class="op-header">' +
       '<div><div class="op-brand">Ruoff Mortgage</div>' +
       '<h1>Smart Savings Snapshot</h1>' +
       '<p class="op-sub">Prepared for ' + escapeHtml(client.clientName || 'Client') +
-      (lo && lo.name ? ' · ' + escapeHtml(lo.name) : '') +
-      (lo && lo.nmls ? ' · NMLS ' + escapeHtml(lo.nmls) : '') +
+      (loNorm.name ? ' · ' + escapeHtml(loNorm.name) : '') +
+      (loNorm.nmls ? ' · NMLS ' + escapeHtml(loNorm.nmls) : '') +
       '</p></div>' +
       '<div class="op-date">' + new Date().toLocaleDateString() + '</div>' +
       '</header>' +
+      buildLoCardHtml(loNorm) +
       '<section class="op-hero">' +
       '<div class="op-before"><div class="op-label">Today</div><div class="op-big">' + money(s.oldHousing) + '</div><div class="op-muted">Total housing · P&amp;I ' + money(s.oldPi) + '</div></div>' +
       '<div class="op-arrow">→</div>' +
@@ -2857,13 +2975,16 @@
       '<div><h3>Home</h3><p>Value ' + money(s.homeValue) + '<br>Equity ' + money(s.equity) + ' · LTV ' + s.ltv + '%<br>New LTV ' + s.newLtv + '% · Equity ' + money(s.newEquity) + '</p></div>' +
       '<div><h3>Proposed loan</h3><p>' + money(s.newLoanAmount) + ' at ' + s.newRate + '% for ' + s.newTerm + ' years<br>Closing costs (est.) ' + money(s.closingCosts) + '</p></div>' +
       '</section>' +
+      '<section class="op-amort"><h3>Loan balance over time</h3>' +
+      buildMiniAmortSvg(s) +
+      (s.mortgageInterest
+        ? '<p class="op-amort-note ' + (s.mortgageInterest.savings >= 0 ? 'teal' : 'red') + '">' +
+          money(Math.abs(s.mortgageInterest.savings)) + (s.mortgageInterest.savings >= 0 ? ' less' : ' more') +
+          ' interest vs keeping the current loan (estimate).</p>'
+        : '') +
+      '</section>' +
       '<section><h3>Debts included in payoff</h3>' +
       '<table class="op-table"><thead><tr><th>Debt</th><th>Balance</th><th>Payment</th></tr></thead><tbody>' + debtRows + '</tbody></table></section>' +
-      (s.mortgageInterest
-        ? '<section><h3>Interest vs keep current loan</h3><p class="' + (s.mortgageInterest.savings >= 0 ? 'teal' : 'red') + '">' +
-          money(Math.abs(s.mortgageInterest.savings)) + (s.mortgageInterest.savings >= 0 ? ' less' : ' more') +
-          ' interest over the remaining life (estimate).</p></section>'
-        : '') +
       (s.halfSavingsPaydown
         ? '<section><h3>Optional: apply half of savings to principal</h3><p>About ' + money(s.halfSavingsPaydown.extraMonthly) +
           '/mo could finish ~' + s.halfSavingsPaydown.yearsSaved + ' years sooner and save ~' +
@@ -2871,8 +2992,8 @@
         : '') +
       '<footer class="op-foot">Estimates only. Not a commitment to lend. Rates, costs, and eligibility subject to underwriting and change. ' +
       'Ruoff Mortgage · NMLS#141868' +
-      (lo && lo.cell ? ' · ' + escapeHtml(lo.cell) : '') +
-      (lo && lo.email ? ' · ' + escapeHtml(lo.email) : '') +
+      (loNorm.cell ? ' · ' + escapeHtml(loNorm.cell) : '') +
+      (loNorm.email ? ' · ' + escapeHtml(loNorm.email) : '') +
       '</footer></div>'
     );
   }
@@ -2997,6 +3118,7 @@
     clearScenarios,
     draftInitialEmail,
     contactMyLO,
+    sendToMyLO,
     copyBorrowerLink,
     saveBranding,
     saveClient,
