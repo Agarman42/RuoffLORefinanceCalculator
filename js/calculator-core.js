@@ -24,12 +24,12 @@
     newLoanAmount: 320000,
     newRate: 5.875,
     newTerm: 30,
-    closingCosts: 5000,
+    closingCosts: 6000,
     debts: []
   };
 
   /** Used when sizing loan to cover debts if closing costs are blank / zero */
-  const SIZE_LOAN_CLOSING_FLOOR = 5000;
+  const SIZE_LOAN_CLOSING_FLOOR = 6000;
 
   function roundMoney(n) {
     return Math.round((Number(n) || 0) * 100) / 100;
@@ -254,7 +254,7 @@
 
   /**
    * Loan amount to cover mortgage + selected other debts + closing costs.
-   * If closingCosts is blank/zero, applies SIZE_LOAN_CLOSING_FLOOR ($5,000)
+   * If closingCosts is blank/zero, applies SIZE_LOAN_CLOSING_FLOOR ($6,000)
    * so cash-to-close is not understated.
    */
   function sizeLoanToCover(currentBalance, debts, closingCosts, homeValue) {

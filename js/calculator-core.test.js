@@ -122,15 +122,15 @@ const sizeDebts = [
   { name: 'Current Mortgage', bal: 320000, pay: 1900, payOff: true },
   { name: 'Card', bal: 10000, pay: 300, rate: 22.9, months: 48, payOff: true }
 ];
-const sized = C.sizeLoanToCover(320000, sizeDebts, 5000, 450000);
-assert(sized.closingCostsUsed === 5000, 'uses entered closing costs');
-assert(sized.needed === 335000, '320k + 10k + 5k costs');
-assert(sized.target === 335000, 'under LTV cap → target = needed');
+const sized = C.sizeLoanToCover(320000, sizeDebts, 6000, 450000);
+assert(sized.closingCostsUsed === 6000, 'uses entered closing costs');
+assert(sized.needed === 336000, '320k + 10k + 6k costs');
+assert(sized.target === 336000, 'under LTV cap → target = needed');
 assert(sized.usedClosingFloor === false, 'not using floor when costs entered');
 const sizedFloor = C.sizeLoanToCover(320000, sizeDebts, 0, 450000);
 assert(sizedFloor.usedClosingFloor === true, 'blank costs → floor flag');
-assert(sizedFloor.closingCostsUsed === 5000, 'floor is $5,000');
-assert(sizedFloor.needed === 335000, 'floor still 320k+10k+5k');
+assert(sizedFloor.closingCostsUsed === 6000, 'floor is $6,000');
+assert(sizedFloor.needed === 336000, 'floor still 320k+10k+6k');
 
 console.log('\nDebt rate/term in interest avoided + canonical');
 const withRates = C.computeScenario({
@@ -143,10 +143,10 @@ const withRates = C.computeScenario({
   insurance: 150,
   pmi: 0,
   escrowIncluded: true,
-  newLoanAmount: 335000,
+  newLoanAmount: 336000,
   newRate: 5.875,
   newTerm: 30,
-  closingCosts: 5000,
+  closingCosts: 6000,
   debts: sizeDebts
 });
 assert(withRates.consumerDebtInterestAvoided > 0, 'interest avoided uses card rate/term');

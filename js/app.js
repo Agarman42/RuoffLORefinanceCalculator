@@ -1316,7 +1316,7 @@
 
   /**
    * Loan amount to cover mortgage + selected debts + closing costs (capped by LTV).
-   * Closing costs come from the Scenario field; if blank/zero, engine uses a $5,000 floor
+   * Closing costs come from the Scenario field; if blank/zero, engine uses a $6,000 floor
    * so sizing does not understate cash needed.
    */
   function computeSizeLoanTarget() {
@@ -1332,7 +1332,7 @@
 
   function sizeLoanDisclosureHtml(r) {
     const floorNote = r.usedClosingFloor
-      ? ' (default $' + (r.closingFloor || 5000).toLocaleString() + ' — none entered)'
+      ? ' (default $' + (r.closingFloor || 6000).toLocaleString() + ' — none entered)'
       : '';
     return (
       '<p class="size-loan-disclosure">' +
